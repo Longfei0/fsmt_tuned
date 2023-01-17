@@ -1,77 +1,78 @@
 #include <free_space/motion_primitive.h>
 #include <math.h>
+#include <stdlib.h>
 
-void sample_motion_primitive_circular_arc(
-    const arc_maneuver_t *maneuver,
-    const sampling_params_t *sampling_params,
-    const point2d_t *offset,
-    polyline_t *samples)
+void sample_unicycle_motion_primitive(const maneuver_t *maneuver,
+    const point2d_t *point_of_interest, double sampling_interval, 
+    point2d_array_t *samples)
 {
-    // Computed by the function
-    double x0, y0;
-    double radius_at_point;
-    double radius_at_origin;
+    // Variables defined to keep notation compact
+    unicycle_control_t *control = (unicycle_control_t *) maneuver->control;
+    
+    // Variables computed by this function
     double sampling_time;
     int number_of_samples;
-    double orientation, cosz, sinz;
 
-    x0 = offset->x;
-    y0 = offset->y;    
-    // Find sampling time given parameters of the circular arc trajectory
-    radius_at_origin = maneuver->forward_velocity/maneuver->angular_rate;
-    radius_at_point = sqrt(pow(x0,2) + pow(radius_at_origin - y0,2) );
-    sampling_time = (sampling_params->sampling_interval/(fabs(maneuver->angular_rate)*radius_at_point));
-    // Refine sampling time such that samples corresponding to t=0 and
-    // t=sampling_time are included
+    if (control->angular_rate == 0){    
+        sampling_time = sampling_interval/fabs(control->forward_velocity);
+    }else{
+        double radius_at_origin = control->forward_velocity/control->angular_rate;
+        double radius_at_point = sqrt(pow(point_of_interest->x,2) + 
+            pow(radius_at_origin - point_of_interest->y,2) );
+        sampling_time = (sampling_interval/(fabs(control->angular_rate)*radius_at_point));
+    }
+    // Refine sampling time such that samples at t=0 and t=time_horizon are included
     number_of_samples = (int) ceil(maneuver->time_horizon/sampling_time) + 1; 
     sampling_time = maneuver->time_horizon/(number_of_samples - 1); 
 
-    samples->number_of_points = 0;
+    unicycle_state_t vehicle_state;
     for(int i=0; i<number_of_samples; i++){
-        if (i >= sampling_params->max_number_of_samples){   
+        if (samples->number_of_points >= samples->max_number_of_points){   
             break;
         }
-        orientation = i*sampling_time*maneuver->angular_rate;
-        cosz = cos(orientation);
-        sinz = sin(orientation);        
-
-        samples->points[i].x = x0*cosz - y0*sinz + radius_at_origin*sinz;
-        samples->points[i].y = x0*sinz + y0*cosz + radius_at_origin*(1-cosz);
+        // Pose of the unicycle model for control input and time
+        excite_unicycle(NULL, control, i*sampling_time, &vehicle_state);
+        // Position of point of interest for corresponding platform pose
+        rigid_body_2d_transformation(&vehicle_state.pose, point_of_interest,
+            &samples->points[samples->number_of_points]);
         samples->number_of_points += 1;
     }
 }
 
-void sample_motion_primitive_straight_line(
-    const straight_maneuver_t *maneuver,
-    const sampling_params_t *sampling_params,
-    const point2d_t *offset,
-    polyline_t *samples)
+void excite_unicycle(const unicycle_state_t *state_init,
+    const unicycle_control_t *control, double time, 
+    unicycle_state_t *state_final)
 {
-    // Computed by the function
-    double x0, y0;
-    double sampling_time;
-    double cosz, sinz, orientation;
-    int number_of_samples;
+    double x0=0.0;
+    double y0=0.0;
+    double yaw0=0.0;
+    
+    if (state_init!=NULL){
+        yaw0 = state_init->pose.yaw;
+        x0 = state_init->pose.x;
+        y0 = state_init->pose.y;
+    }
+    state_final->pose.yaw = control->angular_rate*time + yaw0; 
+    double sinz = sin(state_final->pose.yaw);     
+    double cosz = cos(state_final->pose.yaw);
 
-    x0 = offset->x;
-    y0 = offset->y;    
-    // Find sampling time given parameters of the straigh line trajectory
-    sampling_time = sampling_params->sampling_interval/fabs(maneuver->forward_velocity);
-    // Refine sampling time such that samples corresponding to t=0 and
-    // t=sampling_time are included
-    number_of_samples = (int) ceil(maneuver->time_horizon/sampling_time) + 1; 
-    sampling_time = maneuver->time_horizon/(number_of_samples - 1); 
-
-    samples->number_of_points = 0;
-    orientation = 0.0;
-    cosz = cos(orientation);
-    sinz = sin(orientation);        
-    for(int i=0; i<number_of_samples; i++){
-        if (i >= sampling_params->max_number_of_samples){   
-            break;
-        }
-        samples->points[i].x = x0*cosz - y0*sinz + maneuver->forward_velocity*i*sampling_time;
-        samples->points[i].y = x0*sinz + y0*cosz + maneuver->forward_velocity*i*sampling_time*sinz;
-        samples->number_of_points += 1;
+    if (control->angular_rate == 0){
+        state_final->pose.x = x0*cosz - y0*sinz + control->forward_velocity*time;
+        state_final->pose.y = x0*sinz + y0*cosz + control->forward_velocity*time*sinz;
+    }else{
+        double radius = control->forward_velocity/control->angular_rate;
+        state_final->pose.x = x0*cosz - y0*sinz + radius*sinz;
+        state_final->pose.y = x0*sinz + y0*cosz + radius*(1-cosz);
     }
 }
+
+void rigid_body_2d_transformation(const pose2d_t *pose, const point2d_t *p_reference,
+    point2d_t *p_target){
+    
+    double cosz = cos(pose->yaw);
+    double sinz = sin(pose->yaw);
+    
+    p_target->x = p_reference->x*cosz - p_reference->y*sinz + pose->x;
+    p_target->y = p_reference->x*sinz + p_reference->y*cosz + pose->y;  
+}
+

@@ -5,56 +5,24 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file free_space.h
+ * @file motion_primitive.h
  * @date March 15, 2022
  * Authors: Rômulo Rodrigues
  **/
 
-#ifndef MOTION_PRIMITIVE_H
-#define MOTION_PRIMITIVE_H
+#ifndef FREE_SPACE_MOTION_PRIMITIVE_H
+#define FREE_SPACE_MOTION_PRIMITIVE_H
 
 #include <free_space/basic.h>
 
-/*** MANEUVERS ***/
-typedef struct arc_maneuver_s{
-    double angular_rate;    // measured in the center of mass [rad/s]
-    double forward_velocity;    // measured in the the center of mass [m/s] 
-    double time_horizon;    // temporal length of the motion [s]
-}arc_maneuver_t;
+void sample_unicycle_motion_primitive(const maneuver_t *maneuver, 
+    const point2d_t *offset, double sampling_interval, point2d_array_t *samples);
 
-typedef struct straight_maneuver_s{
-    double forward_velocity;    // measured in the the center of mass [m/s] 
-    double time_horizon;    // temporal length of the motion [s]
-}straight_maneuver_t;
+void excite_unicycle(const unicycle_state_t *state_init,
+    const unicycle_control_t *control, double time, 
+    unicycle_state_t *state_final);
 
-
-/**
- * Circular arc motion primitive
-void sample_motion_primitive_circular_arc(
-    const arc_maneuver_t *maneuver,
-    const point2d_t *offset,
-    double sampling_interval,
-    int max_number_of_samples,
-    point2d_t *samples,
-    int *number_of_samples
-);
-
- * */
-void sample_motion_primitive_circular_arc(
-    const arc_maneuver_t *maneuver,
-    const sampling_params_t *sampling_params,
-    const point2d_t *offset,
-    polyline_t *samples
-);
-
-/**
- * Straight line motion primitive
- * */
-void sample_motion_primitive_straight_line(
-    const straight_maneuver_t *maneuver,
-    const sampling_params_t *sampling_params,
-    const point2d_t *offset,
-    polyline_t *samples
-);
+void rigid_body_2d_transformation(const pose2d_t *pose, const point2d_t *p_reference,
+    point2d_t *p_target);
 
 #endif
