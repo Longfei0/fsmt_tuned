@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.11)
+cmake_minimum_required(VERSION 3.15)
 set(PROJECT_VERSION "0.0.2")
 project(free_space_motion_tube_test LANGUAGES C CXX)
 

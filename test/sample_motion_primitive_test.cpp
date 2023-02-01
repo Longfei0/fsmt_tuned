@@ -1,8 +1,7 @@
 #include "gtest/gtest.h"
-extern "C"{
-  #include <free_space/basic.h>
-  #include <free_space/motion_primitive.h>
-}
+#include <free_space_motion_tube/basic.h>
+#include <free_space_motion_tube/motion_primitive.h>
+
 
 TEST(MotionPrimitiveStraightLine, TwoPoints) {
   // The sampling interval is equal to the length of the trajectory

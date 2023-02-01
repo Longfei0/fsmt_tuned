@@ -1,15 +1,18 @@
-#include <aacal/thread/thread.h>
+#include <five_c/thread/thread.h>
+#include <five_c/activity/activity.h>
+
 #include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
-#include <free_space_activity/free_space_activity.h>
+#include <free_space_motion_tube/activity/activity.h>
 
 bool platform_control_dead, lidar_dead;
 static int interrupted;
 
 static void sigint_handler(int sig) { 
   lidar_dead = true;
-  platform_control_dead = true; }
+  platform_control_dead = true; 
+}
 
 int main(void) {
   signal(SIGINT, sigint_handler);
@@ -36,14 +39,17 @@ int main(void) {
     .nb_measurements = 627
   };
   for (int i=0; i< range_sensor.nb_measurements; i++){
+    rt_range_scan.angles[i] = range_sensor.min_angle + i*
+      range_sensor.angular_resolution;
     rt_range_scan.measurements[i] = 5.;
   }
-  pose2d_t rt_proprioception_pose;
-  velocity_t rt_proprioception_velocity;
+
+  range_motion_tube_t range_motion_tube;
+  velocity_t rt_current_velocity;
   kelo_tricycle_t platform;
   velocity_t rt_des_platform_velocity;
-  pthread_mutex_t range_sensor_lock, platform_control_lock, proprioception_lock;
-
+  pthread_mutex_t range_sensor_lock, platform_control_lock, velocity_lock;
+  pthread_mutex_t motion_tube_lock;
   // Shared memory
   free_space_activity_coordination_state_t  *coord_state = 
   (free_space_activity_coordination_state_t *) free_space_activity.state.coordination_state; 
@@ -56,15 +62,16 @@ int main(void) {
   coord_state->lidar_ready = &lidar_ready;
   coord_state->platform_control_dead = &platform_control_dead;
   coord_state->lidar_dead = &lidar_dead;
-  coord_state->range_sensor_lock = &range_sensor_lock;
-  coord_state->proprioception_lock = &proprioception_lock;
+  coord_state->range_scan_lock = &range_sensor_lock;
+  coord_state->velocity_lock = &velocity_lock;
   coord_state->platform_control_lock = &platform_control_lock;
+  coord_state->motion_tube_lock = &motion_tube_lock;
+
   continuous_state->rt_des_platform_velocity = &rt_des_platform_velocity;
-  params->rt_proprioception_pose = &rt_proprioception_pose;
-  params->rt_proprioception_velocity = &rt_proprioception_velocity;
+  params->rt_current_velocity = &rt_current_velocity;
   params->rt_range_scan = &rt_range_scan;
-  params->range_sensor = &range_sensor;
-  
+  params->rt_range_sensor = &range_sensor;
+  params->rt_range_motion_tube = &range_motion_tube;
 
   strcpy(params->configuration_file, "../configuration/free_space.json");
   // Setting configuration file

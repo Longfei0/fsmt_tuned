@@ -1,6 +1,6 @@
 // Free space
-#include <free_space/free_space.h>
-#include <free_space/basic.h>
+#include <free_space_motion_tube/free_space.h>
+#include <free_space_motion_tube/basic.h>
 
 #include <stdio.h>
 #include <stdlib.h>

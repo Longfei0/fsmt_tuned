@@ -1,7 +1,6 @@
 #include "gtest/gtest.h"
-extern "C"{
-  #include <free_space/basic.h>
-}
+
+#include <free_space_motion_tube/basic.h>
 
 TEST(SampleLineSegment, TwoPoints) {
   // The sampling interval is equal to the length of the line segment

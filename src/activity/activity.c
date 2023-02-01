@@ -6,12 +6,12 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file free_space_activity.c
+ * @file free_space_motion_tube_activity.c
  * @date March 22, 2022
  **/
 
 #include <math.h>
-#include <free_space_activity/free_space_activity.h>
+#include <free_space_motion_tube/activity/activity.h>
 #include <time.h>
 /** 
  * The config() has to be scheduled everytime a change in the LCSM occurs, 
@@ -67,17 +67,29 @@ void free_space_activity_creation_configure(activity_t *activity){
 void free_space_activity_creation_compute(activity_t *activity){
     // Set the flag below to true when the creation behaviour has finished    
     free_space_activity_params_t *params = (free_space_activity_params_t*) activity->conf.params; 
-    params->range_scan.measurements = malloc(sizeof *params->range_scan.measurements * 1000);
-    params->range_scan.angles = malloc(sizeof *params->range_scan.angles * 1000); 
-    // Check whether memory has been properly allocated
-    if (params->range_scan.measurements!= NULL && params->range_scan.angles!=NULL)   
-        params->logfile_ptr = fopen("free_space_log.txt","w");
-        activity->state.lcsm_flags.creation_complete = true;   
-        if(params->logfile_ptr == NULL)
-        {
-            printf("Error to open logfile!");   
-            exit(1);             
-        }
+    free_space_activity_coordination_state_t *coord_state = (free_space_activity_coordination_state_t *) activity->state.coordination_state;
+    free_space_activity_continuous_state_t *continuous_state = (free_space_activity_continuous_state_t *) activity->state.computational_state.continuous;
+
+    activity->state.lcsm_flags.creation_complete = false;
+
+    if (coord_state->lidar_ready){
+        params->range_sensor = *(params->rt_range_sensor);
+        params->range_scan.measurements = malloc(sizeof * params->range_scan.measurements * 
+            params->range_sensor.nb_measurements);
+        params->range_scan.angles = malloc(sizeof *params->range_scan.angles * 
+            params->range_sensor.nb_measurements); 
+        continuous_state->range_motion_tube.angle = (double *) malloc(300*sizeof(double));
+        continuous_state->range_motion_tube.range = (double *) malloc(300*sizeof(double));
+        continuous_state->range_motion_tube.index = (int *) malloc(300*sizeof(int));
+        continuous_state->range_motion_tube.number_of_elements = 0;
+        params->rt_range_motion_tube->angle = (double *) malloc(300*sizeof(double));
+        params->rt_range_motion_tube->range = (double *) malloc(300*sizeof(double));
+        params->rt_range_motion_tube->index = (int *) malloc(300*sizeof(int));
+        params->rt_range_motion_tube->number_of_elements = 0;
+        // Check whether memory has been properly allocated
+        if (params->range_scan.measurements!= NULL && params->range_scan.angles!=NULL)   
+            activity->state.lcsm_flags.creation_complete = true; 
+    }
 }
 
 void free_space_activity_creation(activity_t *activity){
@@ -122,117 +134,10 @@ void free_space_activity_resource_configuration_compute(activity_t *activity){
     free_space_activity_continuous_state_t *continuous_state = (free_space_activity_continuous_state_t *) activity->state.computational_state.continuous;
 
     // Read file
-    int config_status_free_space_activity;
-    configure_free_space_activity_from_file(params->configuration_file, 
-        params, &config_status_free_space_activity);
-
-    // Allocating memory for template
-    template_t cartesian_template;
-    cartesian_template.left.max_number_of_points = params->template_number_of_samples;
-    cartesian_template.left.points = (point2d_t *) malloc(cartesian_template.left.max_number_of_points * sizeof(point2d_t));
-    cartesian_template.front.max_number_of_points = params->template_number_of_samples;
-    cartesian_template.front.points = (point2d_t *) malloc(cartesian_template.left.max_number_of_points * sizeof(point2d_t));
-    cartesian_template.right.max_number_of_points = params->template_number_of_samples;
-    cartesian_template.right.points = (point2d_t *) malloc(cartesian_template.left.max_number_of_points * sizeof(point2d_t));
-
-    // body
-    polyline_t body_geometry;
-    body_t body;
-    body.type = POLYLINE;
-    body.geometry = (void *) &body_geometry;
-    body_geometry.points = (point2d_t *) malloc(4 * sizeof(point2d_t));
-    body_geometry.points[FRONT_LEFT].x = .4;
-    body_geometry.points[FRONT_LEFT].y = .15 + params->template_sampling_interval/2. + .2;
-    body_geometry.points[AXLE_LEFT].x = .0;
-    body_geometry.points[AXLE_LEFT].y = .15 + params->template_sampling_interval/2. + .2; 
-    body_geometry.points[FRONT_RIGHT].x = .4;
-    body_geometry.points[FRONT_RIGHT].y = -.15 - params->template_sampling_interval/2. - .2 ;
-    body_geometry.points[AXLE_RIGHT].x = .0;
-    body_geometry.points[AXLE_RIGHT].y = -.15 - params->template_sampling_interval/2. - .2 ; 
-
-    cartesian_template.left.number_of_points = 0;
-    cartesian_template.front.number_of_points = 0;
-    cartesian_template.right.number_of_points = 0;
-
-    // @TODO This should point to range_sensor filled by the LiDAR activity
-    range_sensor_t range_sensor;
-    range_sensor.angular_resolution = 0.006136;
-    range_sensor.max_angle = 1.920544;
-    range_sensor.min_angle = -1.920544;
-    range_sensor.max_distance = 5.5;
-    range_sensor.min_distance = .1;
-    range_sensor.nb_measurements = 627;
-
-    point2d_t sensor_pos;
-    sensor_pos.x = .27;
-    sensor_pos.y = -.0;
-
-    // Configuring maneuver
-    maneuver_t maneuver;
-    unicycle_control_t control;
-    maneuver.kinematic_model = UNICYCLE;
-    maneuver.time_horizon = params->time_horizon;
-    maneuver.control = (void *) &control;
-    control.forward_velocity = params->nominal_forward_velocity;
-
-    // Allocating memory for template
-    params->free_space_template = (template_sensor_space_t *) 
-        malloc(params->number_of_maneuvers * 4 * sizeof(template_sensor_space_t));
-    if (params->free_space_template == NULL){
-        printf("[Free space activity] fail to allocate memory\n");
-    }
-
-    int nb_cartesian_points, j=0;
-    int half_number_of_maneuvers=(params->number_of_maneuvers-1)/2;
-    for (int time_horizon=4; time_horizon>0; time_horizon--){
-        control.forward_velocity = params->nominal_forward_velocity-0.2*(1-time_horizon/4.0);
-        body_geometry.points[FRONT_LEFT].y -= .05;
-        body_geometry.points[AXLE_LEFT].y -= .05;
-        body_geometry.points[FRONT_RIGHT].y += 0.05 ;
-        body_geometry.points[AXLE_RIGHT].y += 0.05 ; 
-        for(int i=0; i<=half_number_of_maneuvers; i++){
-            maneuver.time_horizon = time_horizon;
-            if (i==0){
-                maneuver.time_horizon +=.25; 
-            }
-            cartesian_template.left.number_of_points = 0;
-            cartesian_template.front.number_of_points = 0;
-            cartesian_template.right.number_of_points = 0;
-
-            control.angular_rate = i*M_PI/(1.5*half_number_of_maneuvers);
-            cartesian_template.left.number_of_points = 0;
-            cartesian_template.front.number_of_points = 0;
-            cartesian_template.right.number_of_points = 0;
-            sample_free_space_template_in_cartesian(&maneuver, &body, params->template_sampling_interval, &cartesian_template);    
-            nb_cartesian_points = cartesian_template.left.number_of_points + 
-                cartesian_template.front.number_of_points +
-                cartesian_template.right.number_of_points;
-            params->free_space_template[j].number_of_beams = 0;
-            params->free_space_template[j].max_number_of_beams = nb_cartesian_points;
-            params->free_space_template[j].beams = (free_space_beam_t *) 
-                malloc(nb_cartesian_points * sizeof(free_space_beam_t));  
-            template_to_sensor_space(&cartesian_template, &range_sensor, &sensor_pos, &maneuver, &(params->free_space_template[j]));
-            j = j + 1;
-            if (i>0){
-                control.angular_rate = -i*M_PI/(2*half_number_of_maneuvers);
-                cartesian_template.left.number_of_points = 0;
-                cartesian_template.front.number_of_points = 0;
-                cartesian_template.right.number_of_points = 0;
-                sample_free_space_template_in_cartesian(&maneuver, &body, params->template_sampling_interval, &cartesian_template);    
-                nb_cartesian_points = cartesian_template.left.number_of_points + 
-                    cartesian_template.front.number_of_points +
-                    cartesian_template.right.number_of_points;
-                params->free_space_template[j].number_of_beams = 0;
-                params->free_space_template[j].max_number_of_beams = nb_cartesian_points;
-                params->free_space_template[j].beams = (free_space_beam_t *) 
-                    malloc(nb_cartesian_points * sizeof(free_space_beam_t));  
-                template_to_sensor_space(&cartesian_template, &range_sensor, &sensor_pos, &maneuver, &(params->free_space_template[j]));
-                j = j + 1;
-            }
-        }
-
-    }
-
+    // int config_status_free_space_activity;
+    // configure_free_space_activity_from_file(params->configuration_file, 
+    //     params, &config_status_free_space_activity);
+    
     // Set the flag below to true when the resource configuartion behaviour has finished
     activity->state.lcsm_flags.resource_configuration_complete = true;
 }
@@ -247,9 +152,9 @@ void free_space_activity_resource_configuration(activity_t *activity){
 void free_space_activity_pausing_coordinate(activity_t *activity){
     free_space_activity_coordination_state_t * coord_state = (free_space_activity_coordination_state_t *) activity->state.coordination_state;
     // Coordinating with other activities
-    if (*coord_state->platform_control_ready && *coord_state->lidar_ready)
+    if (*coord_state->lidar_ready)
         activity->state.lcsm_protocol = EXECUTION;
-    if (*coord_state->platform_control_dead || *coord_state->lidar_dead)
+    if (*coord_state->lidar_dead)
         activity->state.lcsm_protocol = DEINITIALISATION;
 
     // Coordinating own activity
@@ -284,25 +189,24 @@ void free_space_activity_running_communicate_sensor_and_estimation(activity_t *a
     free_space_activity_coordination_state_t *coord_state = (free_space_activity_coordination_state_t *) activity->state.coordination_state;
 
     // Copying range measurements from shared memory to a local buffer
-    pthread_mutex_lock(coord_state->range_sensor_lock);
+    pthread_mutex_lock(coord_state->range_scan_lock);
     params->range_scan.nb_measurements = params->rt_range_scan->nb_measurements;
     for(int i=0; i<params->range_scan.nb_measurements; i++){ 
         params->range_scan.measurements[i] = params->rt_range_scan->measurements[i]; 
         params->range_scan.angles[i] = params->rt_range_scan->angles[i]; 
     }
-    pthread_mutex_unlock(coord_state->range_sensor_lock);
+    pthread_mutex_unlock(coord_state->range_scan_lock);
 
     // Copying proprioception pose from shared memory to a local buffer
-    pthread_mutex_lock(coord_state->proprioception_lock);
-    params->proprioception_pose = *params->rt_proprioception_pose;
-    params->proprioception_velocity = *params->rt_proprioception_velocity;
-    pthread_mutex_unlock(coord_state->proprioception_lock);
+    // pthread_mutex_lock(coord_state->velocity_lock);
+    // params->current_velocity = *params->rt_current_velocity;
+    // pthread_mutex_unlock(coord_state->velocity_lock);
 }
 
 void free_space_activity_running_coordinate(activity_t *activity){
     free_space_activity_coordination_state_t *coord_state = (free_space_activity_coordination_state_t *) activity->state.coordination_state;
     // Coordinating with other activities
-    if (*coord_state->platform_control_dead && *coord_state->lidar_dead)
+    if (*coord_state->lidar_dead)
         activity->state.lcsm_protocol = DEINITIALISATION;
 
     switch (activity->state.lcsm_protocol){ 
@@ -319,7 +223,6 @@ void free_space_activity_running_configure(activity_t *activity){
         // Update schedule
         add_schedule_to_eventloop(&activity->schedule_table, "activity_config");
         remove_schedule_from_eventloop(&activity->schedule_table, "running");
-        fclose(params->logfile_ptr);
     }
 }
 
@@ -328,50 +231,94 @@ void free_space_activity_running_compute(activity_t *activity){
     free_space_activity_continuous_state_t *continuous_state = (free_space_activity_continuous_state_t *) activity->state.computational_state.continuous;
     free_space_activity_coordination_state_t *coord_state = (free_space_activity_coordination_state_t *) activity->state.coordination_state;
 
-    // Data available (see communication_first_round)
+    // Data available (see communication_sensor_and_estimation)
     range_scan_t *range_scan = &params->range_scan;  // lastest measurements made available by the lidar activity
-    velocity_t *platform_velocity_from_encoder = &params->proprioception_velocity;  // velocity estimation provided by the proprioception activity
-    pose2d_t *platform_pose_from_encoder = &params->proprioception_pose;  // pose estimation provided by the proprioception activity
-
-    // Platfrom control (see communication_second_round)
-    velocity_t *des_platform_velocity = &continuous_state->des_platform_velocity;   // Fill in with the desired linear/angular velocity of the platform (vx, wz)
 
     // Platform and sensor parameters
-    range_sensor_t *range_sensor = params->range_sensor;  // parameters of the range sensor
+    range_sensor_t *range_sensor = &params->range_sensor;  // parameters of the range sensor
 
-    des_platform_velocity->vx = 0;
-    des_platform_velocity->wz = 0;
-    int number_of_templates = params->number_of_maneuvers*5;
-    bool *is_available;
-    is_available = (bool *) malloc(sizeof(params->number_of_maneuvers) * number_of_templates);
+    // Motion tube
+    range_motion_tube_t *range_motion_tube = &continuous_state->range_motion_tube;
 
-    for(int i=0; i<number_of_templates; i++){
-        monitor_template_availability(&params->free_space_template[i], range_scan, 
-            range_sensor, &is_available[i]);
-        if (is_available[i]){
-            unicycle_control_t *control = (unicycle_control_t *) params->free_space_template[i].maneuver.control;
-            if (fabs(control->angular_rate - platform_velocity_from_encoder->wz) < .4){
-                des_platform_velocity->vx = control->forward_velocity;
-                des_platform_velocity->wz = control->angular_rate;
-                printf("time horizon (%d): %f\n", i, params->free_space_template[i].maneuver.time_horizon);
-                printf("forward vel: %f [m/s]\n", control->forward_velocity);
-                printf("angular vel: %f [m/s]\n", control->angular_rate);
-                for(int beam=0; beam<range_sensor->nb_measurements;beam++)
-                    fprintf(params->logfile_ptr, "%f ", range_scan->measurements[beam]);
-                fprintf(params->logfile_ptr, "\n");   
-                for(int beam=0; beam<params->free_space_template[i].number_of_beams;beam++)
-                    fprintf(params->logfile_ptr, "%f ", params->free_space_template[i].beams[beam].angle);
-                fprintf(params->logfile_ptr, "\n");
-                for(int beam=0; beam<params->free_space_template[i].number_of_beams;beam++)
-                    fprintf(params->logfile_ptr, "%f ", params->free_space_template[i].beams[beam].range_outer);
-                fprintf(params->logfile_ptr, "\n");
-                for(int beam=0; beam<params->free_space_template[i].number_of_beams;beam++)
-                    fprintf(params->logfile_ptr, "%d ", params->free_space_template[i].beams[beam].index);
-                fprintf(params->logfile_ptr, "\n");            
-                break;
-            }   
-        }
+    bool is_available = false;
+
+    // Allocating memory for template
+    point2d_t sensor_pos = {.x =0, .y =0};
+    polyline_t body_geometry;
+    body_t body;
+    body.type = POLYLINE;
+    body.geometry = (void *) &body_geometry;
+    body_geometry.points = (point2d_t *) malloc(4 * sizeof(point2d_t));
+    body_geometry.points[FRONT_LEFT].x = .4;
+    body_geometry.points[FRONT_LEFT].y = .15;
+    body_geometry.points[AXLE_LEFT].x = .0;
+    body_geometry.points[AXLE_LEFT].y = .15; 
+    body_geometry.points[FRONT_RIGHT].x = .4;
+    body_geometry.points[FRONT_RIGHT].y = -.15;
+    body_geometry.points[AXLE_RIGHT].x = .0;
+    body_geometry.points[AXLE_RIGHT].y = -.15; 
+
+    // maneuver
+    maneuver_t maneuver;
+    unicycle_control_t control;
+    maneuver.control = (void *) &control;
+    // template
+    double sampling_interval = 0.1;
+    template_t cartesian_template;
+    cartesian_template.left.number_of_points = 0;
+    cartesian_template.left.max_number_of_points = 100;
+    cartesian_template.left.points = (point2d_t *) malloc(cartesian_template.left.max_number_of_points * sizeof(point2d_t));
+    cartesian_template.front.number_of_points = 0;
+    cartesian_template.front.max_number_of_points = 100;
+    cartesian_template.front.points = (point2d_t *) malloc(cartesian_template.front.max_number_of_points * sizeof(point2d_t));
+    cartesian_template.right.number_of_points = 0;
+    cartesian_template.right.max_number_of_points = 100;
+    cartesian_template.right.points = (point2d_t *) malloc(cartesian_template.right.max_number_of_points * sizeof(point2d_t));
+
+
+    template_sensor_space_t sensor_space_template;
+    int nb_cartesian_points = cartesian_template.left.max_number_of_points + 
+        cartesian_template.front.max_number_of_points +
+        cartesian_template.right.max_number_of_points;
+
+    sensor_space_template.number_of_beams = 0;
+    sensor_space_template.max_number_of_beams = nb_cartesian_points;
+    sensor_space_template.beams = (free_space_beam_t *) 
+        malloc(nb_cartesian_points * sizeof(free_space_beam_t));  
+
+    maneuver.time_horizon = 2 ;
+    control.forward_velocity = 0.5;
+    control.angular_rate = .0   ;
+
+    sample_free_space_template_in_cartesian(&maneuver, &body, 
+        sampling_interval, &cartesian_template);    
+
+    template_to_sensor_space(&cartesian_template, range_sensor, 
+        &sensor_pos, &maneuver, &sensor_space_template);
+
+    monitor_template_availability(&sensor_space_template, range_scan, 
+        range_sensor, &is_available);
+
+    for(int i=0; i<sensor_space_template.number_of_beams; i++){
+        range_motion_tube->angle[i] = sensor_space_template.beams[i].angle;
+        range_motion_tube->range[i] = sensor_space_template.beams[i].range_outer;
+        range_motion_tube->index[i] = sensor_space_template.beams[i].index;
     }
+    range_motion_tube->number_of_elements = sensor_space_template.number_of_beams;
+    range_motion_tube->available = is_available;
+
+    free(body_geometry.points);
+    free(cartesian_template.right.points);
+    free(cartesian_template.left.points);
+    free(cartesian_template.front.points);
+    free(sensor_space_template.beams);
+
+    body_geometry.points = NULL;
+    cartesian_template.right.points = NULL;
+    cartesian_template.left.points = NULL;
+    cartesian_template.front.points = NULL;
+    sensor_space_template.beams = NULL;
+    //*coord_state->lidar_dead = true;
 }
 
 void free_space_activity_running_communicate_control(activity_t *activity){
@@ -379,10 +326,20 @@ void free_space_activity_running_communicate_control(activity_t *activity){
     free_space_activity_continuous_state_t *continuous_state = (free_space_activity_continuous_state_t *) activity->state.computational_state.continuous;
     free_space_activity_coordination_state_t *coord_state = (free_space_activity_coordination_state_t *) activity->state.coordination_state;
 
+    range_motion_tube_t *range_motion_tube = &continuous_state->range_motion_tube;
+    range_motion_tube_t *rt_range_motion_tube = params->rt_range_motion_tube;
+
     // Copying range measurements from shared memory to a local buffer
-    pthread_mutex_lock(coord_state->platform_control_lock);
-    *continuous_state->rt_des_platform_velocity = continuous_state->des_platform_velocity;
-    pthread_mutex_unlock(coord_state->platform_control_lock);
+    pthread_mutex_lock(coord_state->motion_tube_lock);
+    for(int i=0; i<range_motion_tube->number_of_elements; i++){
+        rt_range_motion_tube->angle[i] = range_motion_tube->angle[i];
+        rt_range_motion_tube->range[i] = range_motion_tube->range[i];
+        rt_range_motion_tube->index[i] = range_motion_tube->index[i];
+    }
+    rt_range_motion_tube->number_of_elements = range_motion_tube->number_of_elements;
+    rt_range_motion_tube->available = range_motion_tube->available;
+    pthread_mutex_unlock(coord_state->motion_tube_lock);
+
 }
 
 void free_space_activity_running(activity_t *activity){
@@ -434,7 +391,6 @@ void free_space_activity_create_lcsm(activity_t *activity, const char* name_algo
 
 void free_space_activity_resource_configure_lcsm(activity_t *activity){
     resource_configure_lcsm_activity(activity);
-    activity->mid = 3;
     // Select the inital state of LCSM for this activity
     activity->lcsm.state = CREATION;
     activity->state.lcsm_protocol = INITIALISATION;
@@ -491,3 +447,51 @@ void configure_free_space_activity_from_file(const char *file_path,
     }
 
 }
+
+
+
+
+// Debugging prints!
+/*
+
+    printf("maneuver. T: %f, maneuver.v: %.2f, maneuver.w: %.2f\n", maneuver.time_horizon,
+        control.forward_velocity, control.angular_rate);
+
+    printf("left has %d points:\n", cartesian_template.left.number_of_points);
+    for(int i=0; i<cartesian_template.left.number_of_points; i++){
+        int j = i;
+        printf("%d: (x,y) = (%f, %f)", i, cartesian_template.left.points[i].x, cartesian_template.left.points[i].y);
+        printf(", range: %.2f, angle: %.2f, index: %d\n",
+            sensor_space_template.beams[j].range_outer,
+            sensor_space_template.beams[j].angle*180/M_PI,
+            sensor_space_template.beams[j].index);
+    }   
+
+    printf("front has %d points:\n", cartesian_template.front.number_of_points);
+    for(int i=0; i<cartesian_template.front.number_of_points; i++){
+        printf("%d: (x,y) = (%f, %f)", i, cartesian_template.front.points[i].x, cartesian_template.front.points[i].y);
+        int j = i+cartesian_template.left.number_of_points;
+        printf(", range: %.2f, angle: %.2f, index: %d\n",
+            sensor_space_template.beams[j].range_outer,
+            sensor_space_template.beams[j].angle*180/M_PI,
+            sensor_space_template.beams[j].index);
+    }
+
+    printf("right has %d points:\n", cartesian_template.right.number_of_points);
+    for(int i=0; i<cartesian_template.right.number_of_points; i++){
+        printf("%d: (x,y) = (%f, %f)", i, cartesian_template.right.points[i].x, cartesian_template.right.points[i].y);
+        int j = i+cartesian_template.front.number_of_points+cartesian_template.left.number_of_points;
+        if (j+1 > sensor_space_template.number_of_beams){
+            printf("\n");
+            continue;
+        }
+        printf(", range: %.2f, angle: %.2f, index: %d\n",
+            sensor_space_template.beams[j].range_outer,
+            sensor_space_template.beams[j].angle*180/M_PI,
+            sensor_space_template.beams[j].index);
+    }
+
+    printf("--------------------\n");
+
+
+*/
