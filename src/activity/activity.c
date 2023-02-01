@@ -206,7 +206,8 @@ void free_space_activity_running_communicate_sensor_and_estimation(activity_t *a
 void free_space_activity_running_coordinate(activity_t *activity){
     free_space_activity_coordination_state_t *coord_state = (free_space_activity_coordination_state_t *) activity->state.coordination_state;
     // Coordinating with other activities
-    if (*coord_state->lidar_dead)
+    if (*coord_state->deinitialisation_request || 
+            *coord_state->lidar_dead)
         activity->state.lcsm_protocol = DEINITIALISATION;
 
     switch (activity->state.lcsm_protocol){ 
