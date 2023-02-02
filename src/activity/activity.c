@@ -72,7 +72,7 @@ void free_space_activity_creation_compute(activity_t *activity){
 
     activity->state.lcsm_flags.creation_complete = false;
 
-    if (coord_state->lidar_ready){
+    if (*coord_state->lidar_ready){
         params->range_sensor = *(params->rt_range_sensor);
         params->range_scan.measurements = malloc(sizeof * params->range_scan.measurements * 
             params->range_sensor.nb_measurements);
