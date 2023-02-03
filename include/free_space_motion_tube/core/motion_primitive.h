@@ -27,9 +27,6 @@ void excite_unicycle(const pose2d_t *pose_init,
     const unicycle_control_t *control, double time, 
     pose2d_t *pose_final);
 
-void rigid_body_2d_transformation(const pose2d_t *pose, const point2d_t *p_reference,
-    point2d_t *p_target);
-
 #ifdef __cplusplus
 } // extern "C"
 #endif

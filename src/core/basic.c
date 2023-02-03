@@ -41,4 +41,12 @@ void sample_line_segment(const line_segment2d_t *line_segment,
     }
 }
 
-
+void rigid_body_2d_transformation(const pose2d_t *pose, const point2d_t *p_reference,
+    point2d_t *p_target){
+    
+    double cosz = cos(pose->yaw);
+    double sinz = sin(pose->yaw);
+    
+    p_target->x = p_reference->x*cosz - p_reference->y*sinz + pose->x;
+    p_target->y = p_reference->x*sinz + p_reference->y*cosz + pose->y;  
+}
