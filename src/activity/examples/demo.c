@@ -69,7 +69,7 @@ int main(void) {
   coord_state->platform_control_lock = &platform_control_lock;
   coord_state->motion_tube_lock = &motion_tube_lock;
 
-  continuous_state->rt_des_platform_velocity = &rt_des_platform_velocity;
+  params->rt_des_platform_velocity = &rt_des_platform_velocity;
   params->rt_current_velocity = &rt_current_velocity;
   params->rt_range_scan = &rt_range_scan;
   params->rt_range_sensor = &range_sensor;
