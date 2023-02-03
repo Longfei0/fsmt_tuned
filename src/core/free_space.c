@@ -4,7 +4,7 @@
 #include <stdlib.h>
 
 void sample_move_straight_template_in_cartesian(const maneuver_t *maneuver,
-    const body_t *body, double sampling_interval, template_t *move_straight_template)
+    const body_t *body, double sampling_interval, template_cartesian_t *move_straight_template)
 {
     polyline_t *platform_geometry = (polyline_t *) body->geometry;
     point2d_t *p_front_left = &platform_geometry->points[FRONT_LEFT];
@@ -26,7 +26,7 @@ void sample_move_straight_template_in_cartesian(const maneuver_t *maneuver,
 }
 
 void sample_steer_left_template_in_cartesian(const maneuver_t *maneuver, 
-    const body_t *body, double sampling_interval, template_t *sl_template)
+    const body_t *body, double sampling_interval, template_cartesian_t *sl_template)
 {
     polyline_t *platform_geometry = (polyline_t *) body->geometry;
     point2d_t *p_axle_left = &platform_geometry->points[AXLE_LEFT];
@@ -68,7 +68,7 @@ void sample_steer_left_template_in_cartesian(const maneuver_t *maneuver,
 }
 
 void sample_steer_right_template_in_cartesian(const maneuver_t *maneuver, 
-    const body_t *body, double sampling_interval, template_t *sr_template)
+    const body_t *body, double sampling_interval, template_cartesian_t *sr_template)
 {
     polyline_t *platform_geometry = (polyline_t *) body->geometry;
     point2d_t *p_front_left = &platform_geometry->points[FRONT_LEFT];
@@ -110,7 +110,7 @@ void sample_steer_right_template_in_cartesian(const maneuver_t *maneuver,
 }
 
 void sample_free_space_template_in_cartesian(const maneuver_t *maneuver,
-    const body_t *body, double sampling_interval, template_t *free_space_template)
+    const body_t *body, double sampling_interval, template_cartesian_t *free_space_template)
 {
     unicycle_control_t *control = (unicycle_control_t *) maneuver->control;
 
@@ -127,7 +127,7 @@ void sample_free_space_template_in_cartesian(const maneuver_t *maneuver,
 
 }
 
-void template_to_sensor_space(const template_t *template_cartesian,
+void template_cartesian_to_sensor_space(const template_cartesian_t *template_cartesian,
     const range_sensor_t *range_sensor, const point2d_t *sensor_pos,
     const maneuver_t *maneuver, template_sensor_space_t *template_sensor_space)
 {

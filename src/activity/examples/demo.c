@@ -78,7 +78,7 @@ int main(void) {
   strcpy(params->configuration_file, "../configuration/free_space.json");
   // Setting configuration file
 
-  create_thread(&main_thread, "main_thread", 100);
+  create_thread(&main_thread, "main_thread", 200);
   register_activity(&main_thread, &free_space_activity,
                     "free_space_activity");
   

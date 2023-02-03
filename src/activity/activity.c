@@ -25,15 +25,12 @@ void free_space_activity_config(activity_t* activity){
     // Deciding which schedule to add
     switch (activity->lcsm.state){
         case CREATION:
-            printf("creation\n");
             add_schedule_to_eventloop(&activity->schedule_table, "creation");
             break;
         case RESOURCE_CONFIGURATION:
-            printf("resource config\n");
             add_schedule_to_eventloop(&activity->schedule_table, "resource_configuration");
             break;
         case PAUSING:
-            printf("pausing\n");
             add_schedule_to_eventloop(&activity->schedule_table, "pausing");
             break;
         case RUNNING:
@@ -133,15 +130,50 @@ void free_space_activity_resource_configuration_compute(activity_t *activity){
     free_space_activity_params_t *params = (free_space_activity_params_t*) activity->conf.params; 
     free_space_activity_continuous_state_t *continuous_state = (free_space_activity_continuous_state_t *) activity->state.computational_state.continuous;
 
-    polyline_t body_geometry;
     params->body.type = POLYLINE;
-    params->body.geometry = (void *) &body_geometry;
-    body_geometry.points = (point2d_t *) malloc(4 * sizeof(point2d_t));
+    params->body.geometry = (polyline_t *) malloc(sizeof(polyline_t));
+    ((polyline_t *) params->body.geometry)->points = (point2d_t *) malloc(4 * sizeof(point2d_t));
 
     // Read file
     int config_status_free_space_activity;
     configure_free_space_activity_from_file(params->configuration_file, 
          params, &config_status_free_space_activity);
+
+    // Allocating memory for template
+    point2d_t sensor_pos = {.x =0, .y =0};
+
+    // maneuver
+    maneuver_t maneuver;
+    unicycle_control_t control;
+    maneuver.control = (void *) &control;
+    // template
+    double sampling_interval = 0.1;
+
+    // allocale_template_memory()
+    template_cartesian_t cartesian_template;
+    cartesian_template.left.number_of_points = 0;
+    cartesian_template.left.max_number_of_points = 100;
+    cartesian_template.left.points = (point2d_t *) malloc(cartesian_template.left.max_number_of_points * sizeof(point2d_t));
+    cartesian_template.front.number_of_points = 0;
+    cartesian_template.front.max_number_of_points = 100;
+    cartesian_template.front.points = (point2d_t *) malloc(cartesian_template.front.max_number_of_points * sizeof(point2d_t));
+    cartesian_template.right.number_of_points = 0;
+    cartesian_template.right.max_number_of_points = 100;
+    cartesian_template.right.points = (point2d_t *) malloc(cartesian_template.right.max_number_of_points * sizeof(point2d_t));
+
+    template_sensor_space_t sensor_space_template;
+    int nb_cartesian_points = cartesian_template.left.max_number_of_points + 
+        cartesian_template.front.max_number_of_points +
+        cartesian_template.right.max_number_of_points;
+
+    sensor_space_template.number_of_beams = 0;
+    sensor_space_template.max_number_of_beams = nb_cartesian_points;
+    sensor_space_template.beams = (free_space_beam_t *) 
+        malloc(nb_cartesian_points * sizeof(free_space_beam_t));  
+
+    maneuver.time_horizon = 2 ;
+    control.forward_velocity = 0.5;
+    control.angular_rate = .0   ;
 
     // Set the flag below to true when the resource configuartion behaviour has finished
     activity->state.lcsm_flags.resource_configuration_complete = true;
@@ -257,7 +289,7 @@ void free_space_activity_running_compute(activity_t *activity){
     maneuver.control = (void *) &control;
     // template
     double sampling_interval = 0.1;
-    template_t cartesian_template;
+    template_cartesian_t cartesian_template;
     cartesian_template.left.number_of_points = 0;
     cartesian_template.left.max_number_of_points = 100;
     cartesian_template.left.points = (point2d_t *) malloc(cartesian_template.left.max_number_of_points * sizeof(point2d_t));
@@ -286,7 +318,7 @@ void free_space_activity_running_compute(activity_t *activity){
     sample_free_space_template_in_cartesian(&maneuver, &params->body, 
         sampling_interval, &cartesian_template);    
 
-    template_to_sensor_space(&cartesian_template, range_sensor, 
+    template_cartesian_to_sensor_space(&cartesian_template, range_sensor, 
         &sensor_pos, &maneuver, &sensor_space_template);
 
     monitor_template_availability(&sensor_space_template, range_scan, 
@@ -300,6 +332,7 @@ void free_space_activity_running_compute(activity_t *activity){
     range_motion_tube->number_of_elements = sensor_space_template.number_of_beams;
     range_motion_tube->available = is_available;
 
+ 
     free(cartesian_template.right.points);
     free(cartesian_template.left.points);
     free(cartesian_template.front.points);
@@ -420,20 +453,23 @@ void configure_free_space_activity_from_file(const char *file_path,
     param_array[number_of_params] = (param_array_t) {"template/maneuver/time_horizon", &(params->time_horizon), PARAM_TYPE_DOUBLE}; number_of_params++;        
 
     polyline_t *geometry = (polyline_t *) params->body.geometry;
-    param_array[number_of_params] = (param_array_t) {"body/front/left/x", &(geometry->points[FRONT_LEFT]), PARAM_TYPE_DOUBLE}; number_of_params++;
-    param_array[number_of_params] = (param_array_t) {"body/front/left/y", &(geometry->points[FRONT_LEFT]), PARAM_TYPE_DOUBLE}; number_of_params++;
-    param_array[number_of_params] = (param_array_t) {"body/front/right/x", &(geometry->points[FRONT_RIGHT]), PARAM_TYPE_DOUBLE}; number_of_params++;
-    param_array[number_of_params] = (param_array_t) {"body/front/right/y", &(geometry->points[FRONT_RIGHT]), PARAM_TYPE_DOUBLE}; number_of_params++; 
-    param_array[number_of_params] = (param_array_t) {"body/axle/left/x", &(geometry->points[AXLE_LEFT]), PARAM_TYPE_DOUBLE}; number_of_params++;
-    param_array[number_of_params] = (param_array_t) {"body/axle/left/y", &(geometry->points[AXLE_LEFT]), PARAM_TYPE_DOUBLE}; number_of_params++;
-    param_array[number_of_params] = (param_array_t) {"body/axle/right/x", &(geometry->points[AXLE_RIGHT]), PARAM_TYPE_DOUBLE}; number_of_params++;
-    param_array[number_of_params] = (param_array_t) {"body/axle/right/y", &(geometry->points[AXLE_RIGHT]), PARAM_TYPE_DOUBLE}; number_of_params++;
+    param_array[number_of_params] = (param_array_t) {"body/front/left/x", &(geometry->points[FRONT_LEFT].x), PARAM_TYPE_DOUBLE}; number_of_params++;
+    param_array[number_of_params] = (param_array_t) {"body/front/left/y", &(geometry->points[FRONT_LEFT].y), PARAM_TYPE_DOUBLE}; number_of_params++;
+    param_array[number_of_params] = (param_array_t) {"body/front/right/x", &(geometry->points[FRONT_RIGHT].x), PARAM_TYPE_DOUBLE}; number_of_params++;
+    param_array[number_of_params] = (param_array_t) {"body/front/right/y", &(geometry->points[FRONT_RIGHT].y), PARAM_TYPE_DOUBLE}; number_of_params++; 
+    param_array[number_of_params] = (param_array_t) {"body/axle/left/x", &(geometry->points[AXLE_LEFT].x), PARAM_TYPE_DOUBLE}; number_of_params++;
+    param_array[number_of_params] = (param_array_t) {"body/axle/left/y", &(geometry->points[AXLE_LEFT].y), PARAM_TYPE_DOUBLE}; number_of_params++;
+    param_array[number_of_params] = (param_array_t) {"body/axle/right/x", &(geometry->points[AXLE_RIGHT].x), PARAM_TYPE_DOUBLE}; number_of_params++;
+    param_array[number_of_params] = (param_array_t) {"body/axle/right/y", &(geometry->points[AXLE_RIGHT].y), PARAM_TYPE_DOUBLE}; number_of_params++;
 
     // generic reader function 
     int config_status_activity;    
 
     // Activity itself    
     read_from_input_file(file_path, param_array, number_of_params, &config_status_activity);
+
+
+    printf("front: %f %f\n", geometry->points[FRONT_LEFT].x, geometry->points[FRONT_LEFT].y);
 
     // Other parameters
 

@@ -21,12 +21,6 @@ extern "C" {
 
 enum free_space_range {FREE_SPACE, FREE_SPACE_AND_OCCLUSION}; 
 
-typedef struct template_s{
-    point2d_array_t left;
-    point2d_array_t right;
-    point2d_array_t front;
-}template_t;
-
 typedef struct free_space_beam_s{
     enum free_space_range type;
     int index;
@@ -36,12 +30,23 @@ typedef struct free_space_beam_s{
     double range_outer;
 }free_space_beam_t;
 
+typedef struct template_cartesian_s{
+    point2d_array_t left;
+    point2d_array_t right;
+    point2d_array_t front;
+}template_cartesian_t;
+
 typedef struct template_sensor_space_s{
     maneuver_t maneuver;
     free_space_beam_t *beams;
     int number_of_beams;
     int max_number_of_beams;   
 }template_sensor_space_t;
+
+typedef struct template_s{
+    template_cartesian_t cartesian;
+    template_sensor_space_t sensor_space;
+}template_t;
 
 void sample_line_segment(const line_segment2d_t *line_segment, 
     double sampling_interval, point2d_array_t *samples);
