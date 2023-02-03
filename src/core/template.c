@@ -24,4 +24,6 @@ void template_allocate_memory(template_t *template,
 }
 
 void template_deallocate_memory(template_t *template){   
+    template_cartesian_deallocate_memory(&template->cartesian);
+    template_sensor_space_deallocate_memory(&template->sensor_space);
 }
