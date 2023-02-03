@@ -47,29 +47,33 @@ typedef struct free_space_activity_params_s{
     range_sensor_t *rt_range_sensor, range_sensor;
     range_scan_t *rt_range_scan, range_scan;
     velocity_t *rt_current_velocity, current_velocity;
+    velocity_t *rt_des_platform_velocity; 
     
     // platform and sensor params
     kelo_tricycle_t *platform;
     
     // Template
-    body_t body;
     template_t *template;
+    maneuver_t maneuver;
+    point2d_t sensor_pos;
+    body_t body;
+
+    // Parameters
     int number_of_maneuvers;
     double time_horizon;
     double nominal_forward_velocity;
     double template_sampling_interval;
     int template_number_of_samples;
     double max_relative_orientation, min_relative_orientation;
-    point2d_t sensor_pos;
-    maneuver_t maneuver;
 
     range_motion_tube_t *rt_range_motion_tube;    
+    
 }free_space_activity_params_t;
 
 // Continuous state
 typedef struct free_space_activity_continuous_state_s{
     // control commands
-    velocity_t *rt_des_platform_velocity, des_platform_velocity;
+    velocity_t des_platform_velocity;
     range_motion_tube_t range_motion_tube;
 }free_space_activity_continuous_state_t;
 
