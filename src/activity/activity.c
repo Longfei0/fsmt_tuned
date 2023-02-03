@@ -289,60 +289,39 @@ void free_space_activity_running_compute(activity_t *activity){
     maneuver.control = (void *) &control;
     // template
     double sampling_interval = 0.1;
-    template_cartesian_t cartesian_template;
-    cartesian_template.left.number_of_points = 0;
-    cartesian_template.left.max_number_of_points = 100;
-    cartesian_template.left.points = (point2d_t *) malloc(cartesian_template.left.max_number_of_points * sizeof(point2d_t));
-    cartesian_template.front.number_of_points = 0;
-    cartesian_template.front.max_number_of_points = 100;
-    cartesian_template.front.points = (point2d_t *) malloc(cartesian_template.front.max_number_of_points * sizeof(point2d_t));
-    cartesian_template.right.number_of_points = 0;
-    cartesian_template.right.max_number_of_points = 100;
-    cartesian_template.right.points = (point2d_t *) malloc(cartesian_template.right.max_number_of_points * sizeof(point2d_t));
+    template_t template;
+    size_t max_number_of_samples[1] = {50};
 
-
-    template_sensor_space_t sensor_space_template;
-    int nb_cartesian_points = cartesian_template.left.max_number_of_points + 
-        cartesian_template.front.max_number_of_points +
-        cartesian_template.right.max_number_of_points;
-
-    sensor_space_template.number_of_beams = 0;
-    sensor_space_template.max_number_of_beams = nb_cartesian_points;
-    sensor_space_template.beams = (free_space_beam_t *) 
-        malloc(nb_cartesian_points * sizeof(free_space_beam_t));  
+    template_create(&template);
+    template_allocate_memory(&template, max_number_of_samples, 1);
 
     maneuver.time_horizon = 2 ;
     control.forward_velocity = 0.5;
     control.angular_rate = .0   ;
 
     sample_free_space_template_in_cartesian(&maneuver, &params->body, 
-        sampling_interval, &cartesian_template);    
+        sampling_interval, &template.cartesian);    
 
-    template_cartesian_to_sensor_space(&cartesian_template, range_sensor, 
-        &sensor_pos, &maneuver, &sensor_space_template);
+    template_cartesian_to_sensor_space(&template.cartesian, range_sensor, 
+        &sensor_pos, &maneuver, &template.sensor_space);
 
-    monitor_template_availability(&sensor_space_template, range_scan, 
+    monitor_template_availability(&template.sensor_space, range_scan, 
         range_sensor, &is_available);
 
-    for(int i=0; i<sensor_space_template.number_of_beams; i++){
-        range_motion_tube->angle[i] = sensor_space_template.beams[i].angle;
-        range_motion_tube->range[i] = sensor_space_template.beams[i].range_outer;
-        range_motion_tube->index[i] = sensor_space_template.beams[i].index;
+    printf("maneuver. T: %f, maneuver.v: %.2f, maneuver.w: %.2f\n", maneuver.time_horizon,
+        control.forward_velocity, control.angular_rate);
+
+    // Copying to range_motion_tube
+    for(int i=0; i<template.sensor_space.number_of_beams; i++){
+        range_motion_tube->angle[i] = template.sensor_space.beams[i].angle;
+        range_motion_tube->range[i] = template.sensor_space.beams[i].range_outer;
+        range_motion_tube->index[i] = template.sensor_space.beams[i].index;
     }
-    range_motion_tube->number_of_elements = sensor_space_template.number_of_beams;
+    
+    range_motion_tube->number_of_elements = template.sensor_space.number_of_beams;
     range_motion_tube->available = is_available;
 
- 
-    free(cartesian_template.right.points);
-    free(cartesian_template.left.points);
-    free(cartesian_template.front.points);
-    free(sensor_space_template.beams);
-
-    cartesian_template.right.points = NULL;
-    cartesian_template.left.points = NULL;
-    cartesian_template.front.points = NULL;
-    sensor_space_template.beams = NULL;
-    //*coord_state->lidar_dead = true;
+    template_deallocate_memory(&template);
 }
 
 void free_space_activity_running_communicate_control(activity_t *activity){
@@ -491,14 +470,15 @@ void configure_free_space_activity_from_file(const char *file_path,
     printf("maneuver. T: %f, maneuver.v: %.2f, maneuver.w: %.2f\n", maneuver.time_horizon,
         control.forward_velocity, control.angular_rate);
 
-    printf("left has %d points:\n", cartesian_template.left.number_of_points);
-    for(int i=0; i<cartesian_template.left.number_of_points; i++){
+
+    printf("left has %d points:\n", template.cartesian.left.number_of_points);
+    for(int i=0; i<template.cartesian.left.number_of_points; i++){
         int j = i;
-        printf("%d: (x,y) = (%f, %f)", i, cartesian_template.left.points[i].x, cartesian_template.left.points[i].y);
+        printf("%d: (x,y) = (%f, %f)", i, template.cartesian.left.points[i].x, template.cartesian.left.points[i].y);
         printf(", range: %.2f, angle: %.2f, index: %d\n",
-            sensor_space_template.beams[j].range_outer,
-            sensor_space_template.beams[j].angle*180/M_PI,
-            sensor_space_template.beams[j].index);
+            template.sensor_space.beams[j].range_outer,
+            template.sensor_space.beams[j].angle*180/M_PI,
+            template.sensor_space.beams[j].index);
     }   
 
     printf("front has %d points:\n", cartesian_template.front.number_of_points);

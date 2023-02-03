@@ -30,6 +30,7 @@
 // Free space
 #include <free_space_motion_tube/core/free_space.h>
 #include <free_space_motion_tube/core/basic.h>
+#include <free_space_motion_tube/core/template.h>
 
 #define NSEC_TO_SEC 0.000000001
 
@@ -52,7 +53,7 @@ typedef struct free_space_activity_params_s{
     
     // Template
     body_t body;
-    template_sensor_space_t *free_space_template;
+    template_t *template;
     int number_of_maneuvers;
     double time_horizon;
     double nominal_forward_velocity;
