@@ -4,6 +4,9 @@ const struct TemplateSensorSpace TemplateSensorSpace ={
     .create = template_sensor_space_create,
     .allocate_memory = template_sensor_space_allocate_memory,
     .deallocate_memory = template_sensor_space_deallocate_memory,
+    .Monitor = {
+        .availability = template_sensor_space_monitor_availability 
+    }
 };
 
 void template_sensor_space_create(template_sensor_space_t *template){
@@ -33,4 +36,27 @@ void template_sensor_space_deallocate_memory(template_sensor_space_t *template){
         free(template->beams);
         template->beams = NULL; 
     }    
+}
+
+void template_sensor_space_monitor_availability(
+    const template_sensor_space_t *template, const lidar_t *lidar, 
+    bool *is_available){
+    range_sensor_t *range_sensor = lidar->range_sensor;
+    range_scan_t *range_scan = lidar->range_scan;
+    free_space_beam_t *beams = template->beams;
+
+    *is_available = true;   // until proven otherwise..
+    for(int i=0; i<template->number_of_beams; i++){
+        double measurement = range_scan->measurements[template->beams[i].index];
+        // Check if measurements is valid (within bounds).
+        if(measurement > range_sensor->min_distance && measurement < range_sensor->max_distance){
+            // Check if there is free space along beam direction.
+            if (measurement < beams[i].range_outer){
+                // Space is not free along beam, search can stop.
+                *is_available = false;
+                break;
+            }
+        }
+    }
+
 }

@@ -47,6 +47,7 @@ void sample_free_space_template_in_cartesian(const maneuver_t *maneuver,
     const body_t *body, double sampling_interval,
     template_cartesian_t *free_space_template);
 
+// Deprecated
 void monitor_template_availability(const template_sensor_space_t *free_space_template,
     const range_scan_t *range_scan, const range_sensor_t *range_sensor,
     bool *is_available);

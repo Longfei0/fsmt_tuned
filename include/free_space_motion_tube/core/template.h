@@ -1,3 +1,15 @@
+/* ----------------------------------------------------------------------------
+ * Free space motion tubes
+ * ROB @ KU Leuven, Leuven, Belgium
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
+/**
+ * @file template.h
+ * @date March 15, 2022
+ * Authors: Rômulo Rodrigues
+ **/
+
 #ifndef FREE_SPACE_MOTION_TUBE_CORE_TEMPLATE_H
 #define FREE_SPACE_MOTION_TUBE_CORE_TEMPLATE_H
 
