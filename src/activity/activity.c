@@ -29,7 +29,7 @@ void free_space_activity_config(activity_t* activity){
             add_schedule_to_eventloop(&activity->schedule_table, "creation");
             break;
         case RESOURCE_CONFIGURATION:
-            printf("resource configuration\n");
+            printf("resource config\n");
             add_schedule_to_eventloop(&activity->schedule_table, "resource_configuration");
             break;
         case PAUSING:
@@ -37,7 +37,7 @@ void free_space_activity_config(activity_t* activity){
             add_schedule_to_eventloop(&activity->schedule_table, "pausing");
             break;
         case RUNNING:
-            printf("running\n");
+            printf("[Free-space Motion Tube] Ready!\n");
             add_schedule_to_eventloop(&activity->schedule_table, "running");
             break;
         case CLEANING:
@@ -133,11 +133,16 @@ void free_space_activity_resource_configuration_compute(activity_t *activity){
     free_space_activity_params_t *params = (free_space_activity_params_t*) activity->conf.params; 
     free_space_activity_continuous_state_t *continuous_state = (free_space_activity_continuous_state_t *) activity->state.computational_state.continuous;
 
+    polyline_t body_geometry;
+    params->body.type = POLYLINE;
+    params->body.geometry = (void *) &body_geometry;
+    body_geometry.points = (point2d_t *) malloc(4 * sizeof(point2d_t));
+
     // Read file
-    // int config_status_free_space_activity;
-    // configure_free_space_activity_from_file(params->configuration_file, 
-    //     params, &config_status_free_space_activity);
-    
+    int config_status_free_space_activity;
+    configure_free_space_activity_from_file(params->configuration_file, 
+         params, &config_status_free_space_activity);
+
     // Set the flag below to true when the resource configuartion behaviour has finished
     activity->state.lcsm_flags.resource_configuration_complete = true;
 }
@@ -245,19 +250,6 @@ void free_space_activity_running_compute(activity_t *activity){
 
     // Allocating memory for template
     point2d_t sensor_pos = {.x =0, .y =0};
-    polyline_t body_geometry;
-    body_t body;
-    body.type = POLYLINE;
-    body.geometry = (void *) &body_geometry;
-    body_geometry.points = (point2d_t *) malloc(4 * sizeof(point2d_t));
-    body_geometry.points[FRONT_LEFT].x = .4;
-    body_geometry.points[FRONT_LEFT].y = .15;
-    body_geometry.points[AXLE_LEFT].x = .0;
-    body_geometry.points[AXLE_LEFT].y = .15; 
-    body_geometry.points[FRONT_RIGHT].x = .4;
-    body_geometry.points[FRONT_RIGHT].y = -.15;
-    body_geometry.points[AXLE_RIGHT].x = .0;
-    body_geometry.points[AXLE_RIGHT].y = -.15; 
 
     // maneuver
     maneuver_t maneuver;
@@ -291,7 +283,7 @@ void free_space_activity_running_compute(activity_t *activity){
     control.forward_velocity = 0.5;
     control.angular_rate = .0   ;
 
-    sample_free_space_template_in_cartesian(&maneuver, &body, 
+    sample_free_space_template_in_cartesian(&maneuver, &params->body, 
         sampling_interval, &cartesian_template);    
 
     template_to_sensor_space(&cartesian_template, range_sensor, 
@@ -308,13 +300,11 @@ void free_space_activity_running_compute(activity_t *activity){
     range_motion_tube->number_of_elements = sensor_space_template.number_of_beams;
     range_motion_tube->available = is_available;
 
-    free(body_geometry.points);
     free(cartesian_template.right.points);
     free(cartesian_template.left.points);
     free(cartesian_template.front.points);
     free(sensor_space_template.beams);
 
-    body_geometry.points = NULL;
     cartesian_template.right.points = NULL;
     cartesian_template.left.points = NULL;
     cartesian_template.front.points = NULL;
@@ -416,21 +406,28 @@ void configure_free_space_activity_from_file(const char *file_path,
     free_space_activity_params_t *params, int *status)
 {
     // define array 
-    int number_of_params = 7;  // Amount of parameters to be read, set by user
-    param_array_t param_array[number_of_params];
+    int number_of_params = 0   ;  // Amount of parameters to be read, set by user
+    param_array_t param_array[20];
 
     int i = 0;  // Keeps tracks of amount of elements inside param_array
  
-    // User input where to write data to 
-    char platform_configuration_file[100];
+    param_array[number_of_params] = (param_array_t) {"number_of_maneuvers", &params->number_of_maneuvers, PARAM_TYPE_INT}; number_of_params++;
+    param_array[number_of_params] = (param_array_t) {"min_relative_orientation", &(params->min_relative_orientation), PARAM_TYPE_DOUBLE}; number_of_params++;
+    param_array[number_of_params] = (param_array_t) {"max_relative_orientation", &(params->max_relative_orientation), PARAM_TYPE_DOUBLE}; number_of_params++;
+    param_array[number_of_params] = (param_array_t) {"template/sampling_interval", &(params->template_sampling_interval), PARAM_TYPE_DOUBLE}; number_of_params++;
+    param_array[number_of_params] = (param_array_t) {"template/number_of_samples", &(params->template_number_of_samples), PARAM_TYPE_INT}; number_of_params++;    
+    param_array[number_of_params] = (param_array_t) {"template/maneuver/nominal_forward_velocity", &(params->nominal_forward_velocity), PARAM_TYPE_DOUBLE}; number_of_params++;        
+    param_array[number_of_params] = (param_array_t) {"template/maneuver/time_horizon", &(params->time_horizon), PARAM_TYPE_DOUBLE}; number_of_params++;        
 
-    param_array[i] = (param_array_t) {"number_of_maneuvers", &params->number_of_maneuvers, PARAM_TYPE_INT}; i++;
-    param_array[i] = (param_array_t) {"min_relative_orientation", &(params->min_relative_orientation), PARAM_TYPE_DOUBLE}; i++;
-    param_array[i] = (param_array_t) {"max_relative_orientation", &(params->max_relative_orientation), PARAM_TYPE_DOUBLE}; i++;
-    param_array[i] = (param_array_t) {"template/sampling_interval", &(params->template_sampling_interval), PARAM_TYPE_DOUBLE}; i++;
-    param_array[i] = (param_array_t) {"template/number_of_samples", &(params->template_number_of_samples), PARAM_TYPE_INT}; i++;    
-    param_array[i] = (param_array_t) {"template/maneuver/nominal_forward_velocity", &(params->nominal_forward_velocity), PARAM_TYPE_DOUBLE}; i++;        
-    param_array[i] = (param_array_t) {"template/maneuver/time_horizon", &(params->time_horizon), PARAM_TYPE_DOUBLE}; i++;        
+    polyline_t *geometry = (polyline_t *) params->body.geometry;
+    param_array[number_of_params] = (param_array_t) {"body/front/left/x", &(geometry->points[FRONT_LEFT]), PARAM_TYPE_DOUBLE}; number_of_params++;
+    param_array[number_of_params] = (param_array_t) {"body/front/left/y", &(geometry->points[FRONT_LEFT]), PARAM_TYPE_DOUBLE}; number_of_params++;
+    param_array[number_of_params] = (param_array_t) {"body/front/right/x", &(geometry->points[FRONT_RIGHT]), PARAM_TYPE_DOUBLE}; number_of_params++;
+    param_array[number_of_params] = (param_array_t) {"body/front/right/y", &(geometry->points[FRONT_RIGHT]), PARAM_TYPE_DOUBLE}; number_of_params++; 
+    param_array[number_of_params] = (param_array_t) {"body/axle/left/x", &(geometry->points[AXLE_LEFT]), PARAM_TYPE_DOUBLE}; number_of_params++;
+    param_array[number_of_params] = (param_array_t) {"body/axle/left/y", &(geometry->points[AXLE_LEFT]), PARAM_TYPE_DOUBLE}; number_of_params++;
+    param_array[number_of_params] = (param_array_t) {"body/axle/right/x", &(geometry->points[AXLE_RIGHT]), PARAM_TYPE_DOUBLE}; number_of_params++;
+    param_array[number_of_params] = (param_array_t) {"body/axle/right/y", &(geometry->points[AXLE_RIGHT]), PARAM_TYPE_DOUBLE}; number_of_params++;
 
     // generic reader function 
     int config_status_activity;    
