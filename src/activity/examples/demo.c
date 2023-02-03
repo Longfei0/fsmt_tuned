@@ -7,6 +7,7 @@
 #include <free_space_motion_tube/activity/activity.h>
 
 bool platform_control_dead, lidar_dead;
+bool deinitialisation_request = false;
 static int interrupted;
 
 static void sigint_handler(int sig) { 
@@ -62,6 +63,7 @@ int main(void) {
   coord_state->lidar_ready = &lidar_ready;
   coord_state->platform_control_dead = &platform_control_dead;
   coord_state->lidar_dead = &lidar_dead;
+  coord_state->deinitialisation_request = &deinitialisation_request;
   coord_state->range_scan_lock = &range_sensor_lock;
   coord_state->velocity_lock = &velocity_lock;
   coord_state->platform_control_lock = &platform_control_lock;
