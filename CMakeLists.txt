@@ -52,7 +52,9 @@ add_library(${PROJECT_NAME} SHARED
     src/core/basic.c
     src/core/motion_primitive.c
     src/core/free_space.c
+    src/core/template.c
     src/core/template_cartesian.c
+    src/core/template_sensor_space.c
 )
 target_include_directories(${PROJECT_NAME}
     PUBLIC
