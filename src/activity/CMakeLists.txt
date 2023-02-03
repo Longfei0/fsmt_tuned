@@ -87,7 +87,7 @@ set_target_properties( ${PROJECT_NAME}
 ##########################
 ##   Build (examples)   ##
 ##########################
-add_executable(activity_demo examples/activity.c)
+add_executable(activity_demo examples/demo.c)
 add_dependencies(activity_demo ${PROJECT_NAME})
 target_link_libraries(activity_demo
     PRIVATE
