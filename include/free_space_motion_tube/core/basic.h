@@ -10,6 +10,7 @@
 #include <motion_primitive_data_structure/maneuver.h>
 #include <sensor_data_structure/range_sensor.h>
 
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -53,9 +54,6 @@ void sample_line_segment(const line_segment2d_t *line_segment,
 
 void points_to_vector2d(const point2d_t *origin,
     const point2d_t *end, vector2d_t *vector);
-
-void rigid_body_2d_transformation(const pose2d_t *pose, const point2d_t *p_reference,
-    point2d_t *p_target);
 
 
 #ifdef __cplusplus

@@ -1,5 +1,11 @@
 #include<free_space_motion_tube/core/template_cartesian.h>
 
+const struct TemplateCartesian TemplateCartesian ={
+    .create = template_cartesian_create,
+    .allocate_memory = template_cartesian_allocate_memory,
+    .deallocate_memory = template_cartesian_deallocate_memory,
+};
+
 void template_cartesian_create(template_cartesian_t *template){
     point2d_array_t *side[3] = {&template->left, &template->front, &template->right};
     for(int i=0; i<3; i++){

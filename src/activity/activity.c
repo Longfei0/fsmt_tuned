@@ -292,8 +292,8 @@ void free_space_activity_running_compute(activity_t *activity){
     template_t template;
     size_t max_number_of_samples[1] = {50};
 
-    template_create(&template);
-    template_allocate_memory(&template, max_number_of_samples, 1);
+    Template.create(&template);
+    Template.allocate_memory(&template, max_number_of_samples, 1);
 
     maneuver.time_horizon = 2 ;
     control.forward_velocity = 0.5;

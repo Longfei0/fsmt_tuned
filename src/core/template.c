@@ -2,15 +2,21 @@
 #include<free_space_motion_tube/core/template_cartesian.h>
 #include<free_space_motion_tube/core/template_sensor_space.h>
 
+const struct Template Template ={
+    .create = template_create,
+    .allocate_memory = template_allocate_memory,
+    .deallocate_memory = template_deallocate_memory,
+};
+
 void template_create(template_t *template){
-    template_cartesian_create(&template->cartesian);
-    template_sensor_space_create(&template->sensor_space);
+    TemplateCartesian.create(&template->cartesian);
+    TemplateSensorSpace.create(&template->sensor_space);
 }
 
 void template_allocate_memory(template_t *template, 
     size_t *max_number_of_samples, uint8_t ALLOCATION_MODE){
     // Cartesian template
-    template_cartesian_allocate_memory(&template->cartesian, max_number_of_samples, ALLOCATION_MODE);
+    TemplateCartesian.allocate_memory(&template->cartesian, max_number_of_samples, ALLOCATION_MODE);
 
     // Sensor space template
     int max_number_of_beams = 0;
@@ -20,10 +26,10 @@ void template_allocate_memory(template_t *template,
             max_number_of_beams += side[i]->max_number_of_points;
         }
     }
-    template_sensor_space_allocate_memory(&template->sensor_space, max_number_of_beams);
+    TemplateSensorSpace.allocate_memory(&template->sensor_space, max_number_of_beams);
 }
 
 void template_deallocate_memory(template_t *template){
-    template_cartesian_deallocate_memory(&template->cartesian);
-    template_sensor_space_deallocate_memory(&template->sensor_space);
+    TemplateCartesian.deallocate_memory(&template->cartesian);
+    TemplateSensorSpace.deallocate_memory(&template->sensor_space);
 }

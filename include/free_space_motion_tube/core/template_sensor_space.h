@@ -9,6 +9,14 @@
 extern "C" {
 #endif
 
+// Methods are collected in TemplateSensorSpace
+extern const struct TemplateSensorSpace TemplateSensorSpace;
+struct TemplateSensorSpace{
+    void (*create)(template_sensor_space_t*);
+    void (*allocate_memory)(template_sensor_space_t*, size_t);
+    void (*deallocate_memory)(template_sensor_space_t*);
+};
+
 void template_sensor_space_create(template_sensor_space_t *template);
 
 void template_sensor_space_allocate_memory(template_sensor_space_t *template, 

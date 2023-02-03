@@ -9,6 +9,14 @@
 extern "C" {
 #endif
 
+// Methods are collected in TemplateCartesian
+extern const struct Template Template;
+struct Template{
+    void (*create)(template_t*);
+    void (*allocate_memory)(template_t*, size_t *, uint8_t);
+    void (*deallocate_memory)(template_t*);
+};
+
 void template_create(template_t *template);
 
 void template_allocate_memory(template_t *template, 
