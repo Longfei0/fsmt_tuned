@@ -44,6 +44,12 @@ void motion_tube_cartesian_sample(motion_tube_cartesian_t *motion_tube,
 void motion_tube_cartesian_sample_move_straight(motion_tube_cartesian_t *motion_tube,
     const motion_primitive_t *motion_primitive, const struct MotionPrimitive *MotionPrimitive);
 
+void motion_tube_cartesian_sample_steer_left(motion_tube_cartesian_t *motion_tube,
+    const motion_primitive_t *motion_primitive, const struct MotionPrimitive *MotionPrimitive);
+
+void motion_tube_cartesian_sample_steer_right(motion_tube_cartesian_t *motion_tube,
+    const motion_primitive_t *motion_primitive, const struct MotionPrimitive *MotionPrimitive);
+
 #ifdef __cplusplus
 }  // extern C
 #endif

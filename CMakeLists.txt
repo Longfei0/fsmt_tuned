@@ -51,7 +51,6 @@ endif()
 add_library(${PROJECT_NAME} SHARED
     src/core/basic.c
     src/core/motion_primitive.c
-    src/core/free_space.c
     src/core/motion_tube.c
     src/core/motion_tube_cartesian.c
     src/core/motion_tube_sensor_space.c

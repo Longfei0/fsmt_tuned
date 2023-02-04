@@ -2,12 +2,17 @@
 #include<free_space_motion_tube/core/motion_tube_cartesian.h>
 #include<free_space_motion_tube/core/motion_tube_sensor_space.h>
 
+#include<math.h>
+
 const struct MotionTube MotionTube ={
     .create = motion_tube_create,
     .allocate_memory = motion_tube_allocate_memory,
     .deallocate_memory = motion_tube_deallocate_memory,
+    .sample = motion_tube_sample,
     .Monitor.availability = motion_tube_availability
 };
+
+/** MotionTube methods **/
 
 void motion_tube_create(motion_tube_t *motion_tube){
     MotionTubeCartesian.create(&motion_tube->cartesian);
@@ -35,6 +40,50 @@ void motion_tube_deallocate_memory(motion_tube_t *motion_tube){
     MotionTubeSensorSpace.deallocate_memory(&motion_tube->sensor_space);
 }
 
+void motion_tube_sample(motion_tube_t* motion_tube, const motion_primitive_t* motion_primitive,
+    const range_sensor_t* range_sensor, const pose2d_t* pose_sensor){
+    // Cartesian
+    MotionTubeCartesian.sample(&motion_tube->cartesian, motion_primitive);
+    // Sensor space
+    motion_tube_cartesian_to_sensor_space(&motion_tube->cartesian,
+        range_sensor, pose_sensor, &motion_tube->sensor_space);
+}
+
 void motion_tube_availability(const motion_tube_t* motion_tube, const lidar_t* lidar, bool* is_available){
     MotionTubeSensorSpace.Monitor.availability(&motion_tube->sensor_space, lidar, is_available);
 }
+
+/** Generic methods **/
+
+void motion_tube_cartesian_to_sensor_space(const motion_tube_cartesian_t* motion_tube_cartesian,
+    const range_sensor_t* range_sensor, const pose2d_t* pose_sensor,
+    motion_tube_sensor_space_t* motion_tube_sensor_space){
+
+    free_space_beam_t *beams = motion_tube_sensor_space->beams;
+    int *number_of_beams = &motion_tube_sensor_space->number_of_beams;
+    int max_number_of_beams = motion_tube_sensor_space->max_number_of_beams;
+    
+    const point2d_array_t *samples[3] = {&motion_tube_cartesian->left, 
+        &motion_tube_cartesian->front, &motion_tube_cartesian->right};
+
+    point2d_t position_sensor = {.x=pose_sensor->x, .y =pose_sensor->y};
+    vector2d_t ray; 
+    for (int k=0; k<3; k++){
+        for(int i=0; i<samples[k]->number_of_points; i++){
+            points_to_vector2d(&position_sensor, &samples[k]->points[i], &ray);
+            if ( (ray.direction >= range_sensor->min_angle) && 
+                 (ray.direction <= range_sensor->max_angle) &&
+                 (ray.magnitude > range_sensor->min_distance) &&
+                 (ray.magnitude < range_sensor->max_distance))
+            {
+                beams[*number_of_beams].type = FREE_SPACE;
+                beams[*number_of_beams].range_outer = ray.magnitude;
+                beams[*number_of_beams].angle = ray.direction;
+                beams[*number_of_beams].index = round((ray.direction - 
+                        range_sensor->min_angle)/range_sensor->angular_resolution);
+                *number_of_beams += 1;
+            }
+        }
+    }  
+}
+
