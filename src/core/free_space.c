@@ -168,21 +168,3 @@ void motion_tube_cartesian_to_sensor_space(const motion_tube_cartesian_t *motion
         
     motion_tube_sensor_space->maneuver.time_horizon = maneuver->time_horizon;
 }
-
-void monitor_motion_tube_availability(const motion_tube_sensor_space_t *free_space_template,
-    const range_scan_t *range_scan, const range_sensor_t *range_sensor,
-    bool *is_available){
-
-    double measurement;
-    *is_available = true;
-    for(int i=0; i<free_space_template->number_of_beams; i++){
-        measurement = range_scan->measurements[free_space_template->beams[i].index];
-        if(measurement > range_sensor->min_distance && measurement < range_sensor->max_distance){
-            if (measurement < free_space_template->beams[i].range_outer){
-                *is_available = false;
-                break;
-            }
-        }
-    }
-}
-
