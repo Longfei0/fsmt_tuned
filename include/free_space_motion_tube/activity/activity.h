@@ -28,7 +28,6 @@
 #include <navigation_data_structure/range_motion_tube.h>
 
 // Free space
-#include <free_space_motion_tube/core/free_space.h>
 #include <free_space_motion_tube/core/basic.h>
 #include <free_space_motion_tube/core/motion_tube.h>
 

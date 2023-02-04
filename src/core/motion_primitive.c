@@ -6,6 +6,7 @@ const struct MotionPrimitive MotionPrimitiveUnicycle={
     .create = motion_primitive_unicycle_create,
     .allocate_memory = motion_primitive_unicycle_allocate_memory,
     .deallocate_memory = motion_primitive_unicycle_deallocate_memory,
+    
     .sample = motion_primitive_unicycle_sample,
     .excite = motion_primitive_unicycle_excite
 };

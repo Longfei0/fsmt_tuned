@@ -13,7 +13,6 @@
 #ifndef FREE_SPACE_MOTION_PRIMITIVE_H
 #define FREE_SPACE_MOTION_PRIMITIVE_H
 
-#include<kinematics_data_structure/models.h>
 
 #include <free_space_motion_tube/core/basic.h>
 
@@ -27,12 +26,6 @@ typedef struct mmaneuver_s{
     body_t body;
 }mmaneuver_t;
 */
-
-typedef struct motion_primitive_s{
-    enum kinematic_model model;
-    double time_horizon;
-    void *control;
-}motion_primitive_t;
 
 extern const struct MotionPrimitive MotionPrimitiveUnicycle;
 struct MotionPrimitive{

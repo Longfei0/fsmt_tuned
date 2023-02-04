@@ -6,6 +6,7 @@
 #include <geometry_data_structure/vector2d.h>
 #include <geometry_data_structure/line_segment2d.h>
 #include <geometry_data_structure/polyline.h>
+#include<kinematics_data_structure/models.h>
 #include <mechanics_data_structure/body.h>
 #include <motion_primitive_data_structure/maneuver.h>
 #include <sensor_data_structure/range_sensor.h>
@@ -22,6 +23,12 @@ extern "C" {
 
 enum free_space_range {FREE_SPACE, FREE_SPACE_AND_OCCLUSION}; 
 
+typedef struct motion_primitive_s{
+    enum kinematic_model model;
+    double time_horizon;
+    void *control;
+}motion_primitive_t;
+
 typedef struct free_space_beam_s{
     enum free_space_range type;
     int index;
@@ -32,9 +39,9 @@ typedef struct free_space_beam_s{
 }free_space_beam_t;
 
 typedef struct motion_tube_cartesian_s{
-    point2d_array_t left;
-    point2d_array_t right;
-    point2d_array_t front;
+    point2d_array_t left, front, right;
+    polyline_t footprint;
+    double sampling_interval;
 }motion_tube_cartesian_t;
 
 typedef struct motion_tube_sensor_space_s{
