@@ -1,21 +1,21 @@
-#include<free_space_motion_tube/core/template_sensor_space.h>
+#include<free_space_motion_tube/core/motion_tube_sensor_space.h>
 
-const struct TemplateSensorSpace TemplateSensorSpace ={
-    .create = template_sensor_space_create,
-    .allocate_memory = template_sensor_space_allocate_memory,
-    .deallocate_memory = template_sensor_space_deallocate_memory,
+const struct MotionTubeSensorSpace MotionTubeSensorSpace ={
+    .create = motion_tube_sensor_space_create,
+    .allocate_memory = motion_tube_sensor_space_allocate_memory,
+    .deallocate_memory = motion_tube_sensor_space_deallocate_memory,
     .Monitor = {
-        .availability = template_sensor_space_monitor_availability 
+        .availability = motion_tube_sensor_space_monitor_availability 
     }
 };
 
-void template_sensor_space_create(template_sensor_space_t *template){
+void motion_tube_sensor_space_create(motion_tube_sensor_space_t *template){
     template->beams = NULL;
     template->number_of_beams = 0;
     template->max_number_of_beams = 0;
 }
 
-void template_sensor_space_allocate_memory(template_sensor_space_t *template,
+void motion_tube_sensor_space_allocate_memory(motion_tube_sensor_space_t *template,
     size_t max_number_of_beams){
     template->number_of_beams = 0;
 
@@ -31,15 +31,15 @@ void template_sensor_space_allocate_memory(template_sensor_space_t *template,
 
 }
 
-void template_sensor_space_deallocate_memory(template_sensor_space_t *template){   
+void motion_tube_sensor_space_deallocate_memory(motion_tube_sensor_space_t *template){   
     if (template->beams != NULL){
         free(template->beams);
         template->beams = NULL; 
     }    
 }
 
-void template_sensor_space_monitor_availability(
-    const template_sensor_space_t *template, const lidar_t *lidar, 
+void motion_tube_sensor_space_monitor_availability(
+    const motion_tube_sensor_space_t *template, const lidar_t *lidar, 
     bool *is_available){
     range_sensor_t *range_sensor = lidar->range_sensor;
     range_scan_t *range_scan = lidar->range_scan;

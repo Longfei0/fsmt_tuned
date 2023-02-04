@@ -30,7 +30,7 @@
 // Free space
 #include <free_space_motion_tube/core/free_space.h>
 #include <free_space_motion_tube/core/basic.h>
-#include <free_space_motion_tube/core/template.h>
+#include <free_space_motion_tube/core/motion_tube.h>
 
 #define NSEC_TO_SEC 0.000000001
 
@@ -53,7 +53,7 @@ typedef struct free_space_activity_params_s{
     kelo_tricycle_t *platform;
     
     // Template
-    template_t *template;
+    motion_tube_t *motion_tube;
     maneuver_t maneuver;
     point2d_t sensor_pos;
     body_t body;

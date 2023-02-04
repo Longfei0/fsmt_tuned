@@ -5,7 +5,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file template.h
+ * @file motion_tube.h
  * @date March 15, 2022
  * Authors: Rômulo Rodrigues
  **/
@@ -21,20 +21,20 @@
 extern "C" {
 #endif
 
-// Methods are collected in TemplateCartesian
-extern const struct Template Template;
-struct Template{
-    void (*create)(template_t*);
-    void (*allocate_memory)(template_t*, size_t *, uint8_t);
-    void (*deallocate_memory)(template_t*);
+// Methods are collected in MotionTubeCartesian
+extern const struct MotionTube MotionTube;
+struct MotionTube{
+    void (*create)(motion_tube_t*);
+    void (*allocate_memory)(motion_tube_t*, size_t *, uint8_t);
+    void (*deallocate_memory)(motion_tube_t*);
 };
 
-void template_create(template_t *template);
+void motion_tube_create(motion_tube_t *motion_tube);
 
-void template_allocate_memory(template_t *template, 
+void motion_tube_allocate_memory(motion_tube_t *motion_tube, 
     size_t *max_number_of_samples, uint8_t ALLOCATION_MODE);
 
-void template_deallocate_memory(template_t *template);
+void motion_tube_deallocate_memory(motion_tube_t *motion_tube);
 
 #ifdef __cplusplus
 }  // extern C

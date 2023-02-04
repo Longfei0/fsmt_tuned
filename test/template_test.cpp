@@ -135,11 +135,11 @@ TEST(StraightTemplate, ThreePointsPerSide) {
   range_sensor.max_angle = 3.1415;
 
   point2d_t sensor_pos = {.x=0, .y=0};
-  template_sensor_space_t template_sensor_space;
-  template_sensor_space.max_number_of_beams = 20;
-  template_sensor_space.beams = (free_space_beam_t *) 
-    malloc(template_sensor_space.max_number_of_beams * sizeof(free_space_beam_t));
-  template_sensor_space.number_of_beams = 0;
+  motion_tube_sensor_space_t motion_tube_sensor_space;
+  motion_tube_sensor_space.max_number_of_beams = 20;
+  motion_tube_sensor_space.beams = (free_space_beam_t *) 
+    malloc(motion_tube_sensor_space.max_number_of_beams * sizeof(free_space_beam_t));
+  motion_tube_sensor_space.number_of_beams = 0;
 }
 
 TEST(SteerLeftTemplate, ThreePointsPerSide) {
@@ -205,19 +205,19 @@ TEST(SteerLeftTemplate, ThreePointsPerSide) {
   range_sensor.max_angle = 3.1415;
 
   point2d_t sensor_pos = {.x=0, .y=0};
-  template_sensor_space_t template_sensor_space;
-  template_sensor_space.max_number_of_beams = 20;
-  template_sensor_space.beams = (free_space_beam_t *) 
-    malloc(template_sensor_space.max_number_of_beams * sizeof(free_space_beam_t));
-  template_sensor_space.number_of_beams = 0;
+  motion_tube_sensor_space_t motion_tube_sensor_space;
+  motion_tube_sensor_space.max_number_of_beams = 20;
+  motion_tube_sensor_space.beams = (free_space_beam_t *) 
+    malloc(motion_tube_sensor_space.max_number_of_beams * sizeof(free_space_beam_t));
+  motion_tube_sensor_space.number_of_beams = 0;
   
     template_to_sensor_space(&ms_template, &range_sensor, &sensor_pos,
-    &maneuver, &template_sensor_space );
+    &maneuver, &motion_tube_sensor_space );
 
   num= 0;
-  for (int i=0; i<template_sensor_space.number_of_beams; i++){
-    printf("%d: beam: %d, range: %f\n", num, template_sensor_space.beams[i].index,
-      template_sensor_space.beams[i].range_outer);
+  for (int i=0; i<motion_tube_sensor_space.number_of_beams; i++){
+    printf("%d: beam: %d, range: %f\n", num, motion_tube_sensor_space.beams[i].index,
+      motion_tube_sensor_space.beams[i].range_outer);
     num++;
   }
 

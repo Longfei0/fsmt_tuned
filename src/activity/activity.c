@@ -139,41 +139,15 @@ void free_space_activity_resource_configuration_compute(activity_t *activity){
     configure_free_space_activity_from_file(params->configuration_file, 
          params, &config_status_free_space_activity);
 
-    // Allocating memory for template
+    // Allocating memory for motion_tube
     point2d_t sensor_pos = {.x =0, .y =0};
 
     // maneuver
     maneuver_t maneuver;
     unicycle_control_t control;
     maneuver.control = (void *) &control;
-    // template
+    // motion_tube
     double sampling_interval = 0.1;
-
-    // allocale_template_memory()
-    template_cartesian_t cartesian_template;
-    cartesian_template.left.number_of_points = 0;
-    cartesian_template.left.max_number_of_points = 100;
-    cartesian_template.left.points = (point2d_t *) malloc(cartesian_template.left.max_number_of_points * sizeof(point2d_t));
-    cartesian_template.front.number_of_points = 0;
-    cartesian_template.front.max_number_of_points = 100;
-    cartesian_template.front.points = (point2d_t *) malloc(cartesian_template.front.max_number_of_points * sizeof(point2d_t));
-    cartesian_template.right.number_of_points = 0;
-    cartesian_template.right.max_number_of_points = 100;
-    cartesian_template.right.points = (point2d_t *) malloc(cartesian_template.right.max_number_of_points * sizeof(point2d_t));
-
-    template_sensor_space_t sensor_space_template;
-    int nb_cartesian_points = cartesian_template.left.max_number_of_points + 
-        cartesian_template.front.max_number_of_points +
-        cartesian_template.right.max_number_of_points;
-
-    sensor_space_template.number_of_beams = 0;
-    sensor_space_template.max_number_of_beams = nb_cartesian_points;
-    sensor_space_template.beams = (free_space_beam_t *) 
-        malloc(nb_cartesian_points * sizeof(free_space_beam_t));  
-
-    maneuver.time_horizon = 2 ;
-    control.forward_velocity = 0.5;
-    control.angular_rate = .0   ;
 
     // Set the flag below to true when the resource configuartion behaviour has finished
     activity->state.lcsm_flags.resource_configuration_complete = true;
@@ -289,39 +263,53 @@ void free_space_activity_running_compute(activity_t *activity){
     maneuver.control = (void *) &control;
     // template
     double sampling_interval = 0.1;
-    template_t template;
+    motion_tube_t motion_tube;
     size_t max_number_of_samples[1] = {50};
 
-    Template.create(&template);
-    Template.allocate_memory(&template, max_number_of_samples, 1);
+    MotionTube.create(&motion_tube);
+    MotionTube.allocate_memory(&motion_tube, max_number_of_samples, 1);
 
     maneuver.time_horizon = 2 ;
     control.forward_velocity = 0.5;
     control.angular_rate = .0   ;
 
-    sample_free_space_template_in_cartesian(&maneuver, &params->body, 
-        sampling_interval, &template.cartesian);    
+    sample_free_space_motion_tube_in_cartesian(&maneuver, &params->body, 
+        sampling_interval, &motion_tube.cartesian);    
 
-    template_cartesian_to_sensor_space(&template.cartesian, range_sensor, 
-        &sensor_pos, &maneuver, &template.sensor_space);
+    motion_tube_cartesian_to_sensor_space(&motion_tube.cartesian, range_sensor, 
+        &sensor_pos, &maneuver, &motion_tube.sensor_space);
 
-    monitor_template_availability(&template.sensor_space, range_scan, 
+    monitor_motion_tube_availability(&motion_tube.sensor_space, range_scan, 
         range_sensor, &is_available);
 
     printf("maneuver. T: %f, maneuver.v: %.2f, maneuver.w: %.2f\n", maneuver.time_horizon,
         control.forward_velocity, control.angular_rate);
 
+
+    printf("left has %d points:\n", motion_tube.cartesian.left.number_of_points);
+    for(int i=0; i<motion_tube.cartesian.left.number_of_points; i++){
+        int j = i;
+        printf("%d: (x,y) = (%f, %f)", i, motion_tube.cartesian.left.points[i].x, motion_tube.cartesian.left.points[i].y);
+        printf(", range: %.2f, angle: %.2f, index: %d\n",
+            motion_tube.sensor_space.beams[j].range_outer,
+            motion_tube.sensor_space.beams[j].angle*180/M_PI,
+            motion_tube.sensor_space.beams[j].index);
+    }
+
+    printf("maneuver. T: %f, maneuver.v: %.2f, maneuver.w: %.2f\n", maneuver.time_horizon,
+        control.forward_velocity, control.angular_rate);
+
     // Copying to range_motion_tube
-    for(int i=0; i<template.sensor_space.number_of_beams; i++){
-        range_motion_tube->angle[i] = template.sensor_space.beams[i].angle;
-        range_motion_tube->range[i] = template.sensor_space.beams[i].range_outer;
-        range_motion_tube->index[i] = template.sensor_space.beams[i].index;
+    for(int i=0; i<motion_tube.sensor_space.number_of_beams; i++){
+        range_motion_tube->angle[i] = motion_tube.sensor_space.beams[i].angle;
+        range_motion_tube->range[i] = motion_tube.sensor_space.beams[i].range_outer;
+        range_motion_tube->index[i] = motion_tube.sensor_space.beams[i].index;
     }
     
-    range_motion_tube->number_of_elements = template.sensor_space.number_of_beams;
+    range_motion_tube->number_of_elements = motion_tube.sensor_space.number_of_beams;
     range_motion_tube->available = is_available;
 
-    template_deallocate_memory(&template);
+    motion_tube_deallocate_memory(&motion_tube);
 }
 
 void free_space_activity_running_communicate_control(activity_t *activity){
@@ -471,38 +459,38 @@ void configure_free_space_activity_from_file(const char *file_path,
         control.forward_velocity, control.angular_rate);
 
 
-    printf("left has %d points:\n", template.cartesian.left.number_of_points);
-    for(int i=0; i<template.cartesian.left.number_of_points; i++){
+    printf("left has %d points:\n", motion_tube.cartesian.left.number_of_points);
+    for(int i=0; i<motion_tube.cartesian.left.number_of_points; i++){
         int j = i;
-        printf("%d: (x,y) = (%f, %f)", i, template.cartesian.left.points[i].x, template.cartesian.left.points[i].y);
+        printf("%d: (x,y) = (%f, %f)", i, motion_tube.cartesian.left.points[i].x, motion_tube.cartesian.left.points[i].y);
         printf(", range: %.2f, angle: %.2f, index: %d\n",
-            template.sensor_space.beams[j].range_outer,
-            template.sensor_space.beams[j].angle*180/M_PI,
-            template.sensor_space.beams[j].index);
+            motion_tube.sensor_space.beams[j].range_outer,
+            motion_tube.sensor_space.beams[j].angle*180/M_PI,
+            motion_tube.sensor_space.beams[j].index);
     }   
 
-    printf("front has %d points:\n", cartesian_template.front.number_of_points);
-    for(int i=0; i<cartesian_template.front.number_of_points; i++){
-        printf("%d: (x,y) = (%f, %f)", i, cartesian_template.front.points[i].x, cartesian_template.front.points[i].y);
-        int j = i+cartesian_template.left.number_of_points;
+    printf("front has %d points:\n", cartesian_motion_tube.front.number_of_points);
+    for(int i=0; i<cartesian_motion_tube.front.number_of_points; i++){
+        printf("%d: (x,y) = (%f, %f)", i, cartesian_motion_tube.front.points[i].x, cartesian_motion_tube.front.points[i].y);
+        int j = i+cartesian_motion_tube.left.number_of_points;
         printf(", range: %.2f, angle: %.2f, index: %d\n",
-            sensor_space_template.beams[j].range_outer,
-            sensor_space_template.beams[j].angle*180/M_PI,
-            sensor_space_template.beams[j].index);
+            sensor_space_motion_tube.beams[j].range_outer,
+            sensor_space_motion_tube.beams[j].angle*180/M_PI,
+            sensor_space_motion_tube.beams[j].index);
     }
 
-    printf("right has %d points:\n", cartesian_template.right.number_of_points);
-    for(int i=0; i<cartesian_template.right.number_of_points; i++){
-        printf("%d: (x,y) = (%f, %f)", i, cartesian_template.right.points[i].x, cartesian_template.right.points[i].y);
-        int j = i+cartesian_template.front.number_of_points+cartesian_template.left.number_of_points;
-        if (j+1 > sensor_space_template.number_of_beams){
+    printf("right has %d points:\n", cartesian_motion_tube.right.number_of_points);
+    for(int i=0; i<cartesian_motion_tube.right.number_of_points; i++){
+        printf("%d: (x,y) = (%f, %f)", i, cartesian_motion_tube.right.points[i].x, cartesian_motion_tube.right.points[i].y);
+        int j = i+cartesian_motion_tube.front.number_of_points+cartesian_motion_tube.left.number_of_points;
+        if (j+1 > sensor_space_motion_tube.number_of_beams){
             printf("\n");
             continue;
         }
         printf(", range: %.2f, angle: %.2f, index: %d\n",
-            sensor_space_template.beams[j].range_outer,
-            sensor_space_template.beams[j].angle*180/M_PI,
-            sensor_space_template.beams[j].index);
+            sensor_space_motion_tube.beams[j].range_outer,
+            sensor_space_motion_tube.beams[j].angle*180/M_PI,
+            sensor_space_motion_tube.beams[j].index);
     }
 
     printf("--------------------\n");

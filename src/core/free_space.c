@@ -3,8 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void sample_move_straight_template_in_cartesian(const maneuver_t *maneuver,
-    const body_t *body, double sampling_interval, template_cartesian_t *move_straight_template)
+void sample_move_straight_motion_tube_in_cartesian(const maneuver_t *maneuver,
+    const body_t *body, double sampling_interval, motion_tube_cartesian_t *move_straight_template)
 {
     polyline_t *platform_geometry = (polyline_t *) body->geometry;
     point2d_t *p_front_left = &platform_geometry->points[FRONT_LEFT];
@@ -25,8 +25,8 @@ void sample_move_straight_template_in_cartesian(const maneuver_t *maneuver,
     sample_line_segment(&front, sampling_interval, &move_straight_template->front);
 }
 
-void sample_steer_left_template_in_cartesian(const maneuver_t *maneuver, 
-    const body_t *body, double sampling_interval, template_cartesian_t *sl_template)
+void sample_steer_left_motion_tube_in_cartesian(const maneuver_t *maneuver, 
+    const body_t *body, double sampling_interval, motion_tube_cartesian_t *sl_template)
 {
     polyline_t *platform_geometry = (polyline_t *) body->geometry;
     point2d_t *p_axle_left = &platform_geometry->points[AXLE_LEFT];
@@ -67,8 +67,8 @@ void sample_steer_left_template_in_cartesian(const maneuver_t *maneuver,
     sample_line_segment(&front, sampling_interval, &sl_template->front);
 }
 
-void sample_steer_right_template_in_cartesian(const maneuver_t *maneuver, 
-    const body_t *body, double sampling_interval, template_cartesian_t *sr_template)
+void sample_steer_right_motion_tube_in_cartesian(const maneuver_t *maneuver, 
+    const body_t *body, double sampling_interval, motion_tube_cartesian_t *sr_template)
 {
     polyline_t *platform_geometry = (polyline_t *) body->geometry;
     point2d_t *p_front_left = &platform_geometry->points[FRONT_LEFT];
@@ -109,36 +109,36 @@ void sample_steer_right_template_in_cartesian(const maneuver_t *maneuver,
     sample_line_segment(&front, sampling_interval, &sr_template->front);
 }
 
-void sample_free_space_template_in_cartesian(const maneuver_t *maneuver,
-    const body_t *body, double sampling_interval, template_cartesian_t *free_space_template)
+void sample_free_space_motion_tube_in_cartesian(const maneuver_t *maneuver,
+    const body_t *body, double sampling_interval, motion_tube_cartesian_t *free_space_template)
 {
     unicycle_control_t *control = (unicycle_control_t *) maneuver->control;
 
     if (control->angular_rate == 0){
-        sample_move_straight_template_in_cartesian(maneuver, body, 
+        sample_move_straight_motion_tube_in_cartesian(maneuver, body, 
             sampling_interval, free_space_template);
     } else if (control->angular_rate > 0){
-        sample_steer_left_template_in_cartesian(maneuver, body, 
+        sample_steer_left_motion_tube_in_cartesian(maneuver, body, 
             sampling_interval, free_space_template);
     } else if (control->angular_rate < 0){
-        sample_steer_right_template_in_cartesian(maneuver, body, 
+        sample_steer_right_motion_tube_in_cartesian(maneuver, body, 
             sampling_interval, free_space_template);
     }
 
 }
 
-void template_cartesian_to_sensor_space(const template_cartesian_t *template_cartesian,
+void motion_tube_cartesian_to_sensor_space(const motion_tube_cartesian_t *motion_tube_cartesian,
     const range_sensor_t *range_sensor, const point2d_t *sensor_pos,
-    const maneuver_t *maneuver, template_sensor_space_t *template_sensor_space)
+    const maneuver_t *maneuver, motion_tube_sensor_space_t *motion_tube_sensor_space)
 {
-    free_space_beam_t *beams = template_sensor_space->beams;
-    int *number_of_beams = &template_sensor_space->number_of_beams;
-    int max_number_of_beams = template_sensor_space->max_number_of_beams;
+    free_space_beam_t *beams = motion_tube_sensor_space->beams;
+    int *number_of_beams = &motion_tube_sensor_space->number_of_beams;
+    int max_number_of_beams = motion_tube_sensor_space->max_number_of_beams;
     
     const point2d_array_t *samples[3];
-    samples[0] = &template_cartesian->left;
-    samples[1] = &template_cartesian->front;
-    samples[2] = &template_cartesian->right;
+    samples[0] = &motion_tube_cartesian->left;
+    samples[1] = &motion_tube_cartesian->front;
+    samples[2] = &motion_tube_cartesian->right;
 
     vector2d_t ray; 
 
@@ -160,16 +160,16 @@ void template_cartesian_to_sensor_space(const template_cartesian_t *template_car
         }
     }  
     
-    template_sensor_space->maneuver.control = (void *) malloc(sizeof(unicycle_control_t));
-    ((unicycle_control_t *) template_sensor_space->maneuver.control)->forward_velocity = 
+    motion_tube_sensor_space->maneuver.control = (void *) malloc(sizeof(unicycle_control_t));
+    ((unicycle_control_t *) motion_tube_sensor_space->maneuver.control)->forward_velocity = 
         ((unicycle_control_t *) maneuver->control)->forward_velocity;
-    ((unicycle_control_t *) template_sensor_space->maneuver.control)->angular_rate = 
+    ((unicycle_control_t *) motion_tube_sensor_space->maneuver.control)->angular_rate = 
         ((unicycle_control_t *) maneuver->control)->angular_rate;
         
-    template_sensor_space->maneuver.time_horizon = maneuver->time_horizon;
+    motion_tube_sensor_space->maneuver.time_horizon = maneuver->time_horizon;
 }
 
-void monitor_template_availability(const template_sensor_space_t *free_space_template,
+void monitor_motion_tube_availability(const motion_tube_sensor_space_t *free_space_template,
     const range_scan_t *range_scan, const range_sensor_t *range_sensor,
     bool *is_available){
 
