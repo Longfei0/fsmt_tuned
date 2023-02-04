@@ -6,6 +6,7 @@ const struct MotionTube MotionTube ={
     .create = motion_tube_create,
     .allocate_memory = motion_tube_allocate_memory,
     .deallocate_memory = motion_tube_deallocate_memory,
+    .Monitor.availability = motion_tube_availability
 };
 
 void motion_tube_create(motion_tube_t *motion_tube){
@@ -32,4 +33,8 @@ void motion_tube_allocate_memory(motion_tube_t *motion_tube,
 void motion_tube_deallocate_memory(motion_tube_t *motion_tube){
     MotionTubeCartesian.deallocate_memory(&motion_tube->cartesian);
     MotionTubeSensorSpace.deallocate_memory(&motion_tube->sensor_space);
+}
+
+void motion_tube_availability(const motion_tube_t* motion_tube, const lidar_t* lidar, bool* is_available){
+    MotionTubeSensorSpace.Monitor.availability(&motion_tube->sensor_space, lidar, is_available);
 }

@@ -31,7 +31,7 @@ struct MotionTubeSensorSpace{
     void (*create)(motion_tube_sensor_space_t*);
     void (*allocate_memory)(motion_tube_sensor_space_t*, size_t);
     void (*deallocate_memory)(motion_tube_sensor_space_t*);
-    struct Monitor{
+    struct{
         void(*availability)(const motion_tube_sensor_space_t*, 
             const lidar_t*, bool*);
     }Monitor;

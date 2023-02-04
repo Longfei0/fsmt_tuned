@@ -25,7 +25,7 @@ TEST(MotionPrimitiveStraightLine, TwoPoints) {
   samples.points = (point2d_t *) 
     malloc(samples.max_number_of_points * sizeof(point2d_t));
   
-  sample_unicycle_motion_primitive(&maneuver, &position, sampling_interval, &samples);
+  motion_primitive_unicycle_sample(&maneuver, &position, sampling_interval, &samples);
   // ASSERT number of samples
   ASSERT_EQ(samples.number_of_points, 2) << "Wrong number of samples";
   // EXPECT values at samples 

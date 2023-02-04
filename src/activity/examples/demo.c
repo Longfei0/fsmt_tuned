@@ -42,7 +42,7 @@ int main(void) {
   for (int i=0; i< range_sensor.nb_measurements; i++){
     rt_range_scan.angles[i] = range_sensor.min_angle + i*
       range_sensor.angular_resolution;
-    rt_range_scan.measurements[i] = 5.;
+    rt_range_scan.measurements[i] = 1.;
   }
 
   range_motion_tube_t range_motion_tube;

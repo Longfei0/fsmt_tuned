@@ -252,6 +252,9 @@ void free_space_activity_running_compute(activity_t *activity){
     // Motion tube
     range_motion_tube_t *range_motion_tube = &continuous_state->range_motion_tube;
 
+    // Lidar
+    lidar_t lidar = {.range_scan = range_scan, .range_sensor = range_sensor};
+
     bool is_available = false;
 
     // Allocating memory for template
@@ -279,11 +282,12 @@ void free_space_activity_running_compute(activity_t *activity){
     motion_tube_cartesian_to_sensor_space(&motion_tube.cartesian, range_sensor, 
         &sensor_pos, &maneuver, &motion_tube.sensor_space);
 
-    monitor_motion_tube_availability(&motion_tube.sensor_space, range_scan, 
-        range_sensor, &is_available);
+    // monitor_motion_tube_availability(&motion_tube.sensor_space, range_scan, 
+    //     range_sensor, &is_available);
+    MotionTube.Monitor.availability(&motion_tube, &lidar, &is_available);
 
-    printf("maneuver. T: %f, maneuver.v: %.2f, maneuver.w: %.2f\n", maneuver.time_horizon,
-        control.forward_velocity, control.angular_rate);
+    printf("maneuver. T: %f, maneuver.v: %.2f, maneuver.w: %.2f, is_available: %d\n", maneuver.time_horizon,
+        control.forward_velocity, control.angular_rate, is_available);
 
 
     printf("left has %d points:\n", motion_tube.cartesian.left.number_of_points);

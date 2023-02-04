@@ -11,11 +11,11 @@ void sample_move_straight_motion_tube_in_cartesian(const maneuver_t *maneuver,
     point2d_t *p_front_right = &platform_geometry->points[FRONT_RIGHT];
 
     // Left side
-    sample_unicycle_motion_primitive(maneuver, p_front_left, 
+    motion_primitive_unicycle_sample(maneuver, p_front_left, 
         sampling_interval, &move_straight_template->left);
 
     // Right side
-    sample_unicycle_motion_primitive(maneuver, p_front_right, 
+    motion_primitive_unicycle_sample(maneuver, p_front_right, 
         sampling_interval, &move_straight_template->right);
 
     // Front
@@ -34,7 +34,7 @@ void sample_steer_left_motion_tube_in_cartesian(const maneuver_t *maneuver,
     point2d_t *p_front_right = &platform_geometry->points[FRONT_RIGHT];
 
     pose2d_t pose;
-    excite_unicycle(NULL, (unicycle_control_t *) maneuver->control, 
+    motion_primitive_unicycle_excite(NULL, (unicycle_control_t *) maneuver->control, 
         maneuver->time_horizon, &pose);
         
     // Position of point of interest for corresponding platform pose
@@ -45,7 +45,7 @@ void sample_steer_left_motion_tube_in_cartesian(const maneuver_t *maneuver,
             &p_front_right_endtime);
 
     /* Left side of the template */
-    sample_unicycle_motion_primitive(maneuver, p_axle_left, 
+    motion_primitive_unicycle_sample(maneuver, p_axle_left, 
         sampling_interval, &sl_template->left);
 
     line_segment2d_t left_side;
@@ -56,7 +56,7 @@ void sample_steer_left_motion_tube_in_cartesian(const maneuver_t *maneuver,
     sl_template->left.number_of_points--;
 
     /* Right side of the template */
-    sample_unicycle_motion_primitive(maneuver, p_front_right, 
+    motion_primitive_unicycle_sample(maneuver, p_front_right, 
         sampling_interval, &sl_template->right);
     sl_template->right.number_of_points--;
 
@@ -76,7 +76,7 @@ void sample_steer_right_motion_tube_in_cartesian(const maneuver_t *maneuver,
     point2d_t *p_axle_right = &platform_geometry->points[AXLE_RIGHT];
     
     pose2d_t pose;
-    excite_unicycle(NULL, (unicycle_control_t *) maneuver->control, 
+    motion_primitive_unicycle_excite(NULL, (unicycle_control_t *) maneuver->control, 
         maneuver->time_horizon, &pose);
         
     // Position of point of interest for corresponding platform pose
@@ -87,12 +87,12 @@ void sample_steer_right_motion_tube_in_cartesian(const maneuver_t *maneuver,
             &p_front_right_endtime);
 
     /* Left side of the template */
-    sample_unicycle_motion_primitive(maneuver, p_front_left, 
+    motion_primitive_unicycle_sample(maneuver, p_front_left, 
         sampling_interval, &sr_template->left);
     sr_template->left.number_of_points--;
 
     /* Right side of the template */
-    sample_unicycle_motion_primitive(maneuver, p_axle_right, 
+    motion_primitive_unicycle_sample(maneuver, p_axle_right, 
         sampling_interval, &sr_template->right);
 
     line_segment2d_t right_side;
