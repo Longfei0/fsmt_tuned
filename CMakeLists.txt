@@ -51,7 +51,7 @@ endif()
 add_library(${PROJECT_NAME} SHARED
     src/core/basic.c
     src/core/motion_primitive.c
-#    src/core/free_space.c
+    src/core/free_space.c
     src/core/motion_tube.c
     src/core/motion_tube_cartesian.c
     src/core/motion_tube_sensor_space.c
@@ -72,11 +72,11 @@ target_link_libraries(${PROJECT_NAME}
 ##  Build (Optionals)   ##
 ##########################
 
-if(BUILD_GTESTS)
-    add_subdirectory(test)
-endif()
+# if(BUILD_GTESTS)
+#     add_subdirectory(test)
+# endif()
 
-#if(BUILD_5C_ACTIVITY)
-#    add_subdirectory(src/activity)
-#endif()
+if(BUILD_5C_ACTIVITY)
+    add_subdirectory(src/activity)
+endif()
 
