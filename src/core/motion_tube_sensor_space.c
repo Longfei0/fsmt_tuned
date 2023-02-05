@@ -21,7 +21,7 @@ void motion_tube_sensor_space_allocate_memory(motion_tube_sensor_space_t *templa
 
     if(max_number_of_beams > 0){
         template->beams = malloc(sizeof(template->beams)*max_number_of_beams);
-        if (template->beams == NULL){
+        if (template->beams != NULL){
             template->max_number_of_beams = max_number_of_beams;
         }else{
             // Failed to allocate memory

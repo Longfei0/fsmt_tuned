@@ -66,10 +66,14 @@ void motion_tube_cartesian_to_sensor_space(const motion_tube_cartesian_t* motion
     const point2d_array_t *samples[3] = {&motion_tube_cartesian->left, 
         &motion_tube_cartesian->front, &motion_tube_cartesian->right};
 
+    vector2d_t ray;
     point2d_t position_sensor = {.x=pose_sensor->x, .y =pose_sensor->y};
-    vector2d_t ray; 
+    *number_of_beams = 0; 
     for (int k=0; k<3; k++){
         for(int i=0; i<samples[k]->number_of_points; i++){
+            if(*number_of_beams >= motion_tube_sensor_space->max_number_of_beams){
+                break;
+            }
             points_to_vector2d(&position_sensor, &samples[k]->points[i], &ray);
             if ( (ray.direction >= range_sensor->min_angle) && 
                  (ray.direction <= range_sensor->max_angle) &&

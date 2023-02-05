@@ -52,9 +52,11 @@ typedef struct free_space_activity_params_s{
     kelo_tricycle_t *platform;
     
     // Template
-    motion_tube_t *motion_tube;
+    motion_tube_t motion_tube;
+    motion_primitive_t motion_primitive;
+    pose2d_t pose_sensor;
+
     maneuver_t maneuver;
-    point2d_t sensor_pos;
     body_t body;
 
     // Parameters

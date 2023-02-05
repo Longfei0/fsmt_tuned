@@ -45,7 +45,6 @@ typedef struct motion_tube_cartesian_s{
 }motion_tube_cartesian_t;
 
 typedef struct motion_tube_sensor_space_s{
-    maneuver_t maneuver;
     free_space_beam_t *beams;
     int number_of_beams;
     int max_number_of_beams;   
