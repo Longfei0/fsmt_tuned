@@ -67,6 +67,10 @@ void motion_tube_cartesian_deallocate_memory(motion_tube_cartesian_t *motion_tub
 void motion_tube_cartesian_sample(motion_tube_cartesian_t *motion_tube,
     const motion_primitive_t *motion_primitive)
 {
+    motion_tube->left.number_of_points = 0;
+    motion_tube->front.number_of_points = 0;
+    motion_tube->right.number_of_points = 0;
+
     if (motion_primitive->model == UNICYCLE){
         unicycle_control_t *control = (unicycle_control_t *) motion_primitive->control;
         if (control->angular_rate == 0){
