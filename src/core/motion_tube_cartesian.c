@@ -90,19 +90,30 @@ void motion_tube_cartesian_sample_move_straight(motion_tube_cartesian_t *motion_
     const motion_primitive_t *motion_primitive, const struct MotionPrimitive *MotionPrimitive)
 {
     polyline_t *footprint = &motion_tube->footprint;
-    point2d_t *p_front_left = &footprint->points[FRONT_LEFT];
-    point2d_t *p_front_right = &footprint->points[FRONT_RIGHT];
+    point2d_t p_front_left = {
+        .x = footprint->points[FRONT_LEFT].x,
+        .y = footprint->points[FRONT_LEFT].y + motion_tube->sampling_interval
+    };
+    point2d_t p_front_right = {
+        .x = footprint->points[FRONT_RIGHT].x,
+        .y = footprint->points[FRONT_RIGHT].y - motion_tube->sampling_interval
+    };
 
     // Left side
-    MotionPrimitive->sample(motion_primitive, p_front_left, 
+    MotionPrimitive->sample(motion_primitive, &p_front_left, 
         motion_tube->sampling_interval, &motion_tube->left );
     // Right side
-    MotionPrimitive->sample(motion_primitive, p_front_right, 
+    MotionPrimitive->sample(motion_primitive, &p_front_right, 
         motion_tube->sampling_interval, &motion_tube->right );
     // Front
-    line_segment2d_t front;
-    front.endpoints[0] = motion_tube->left.points[motion_tube->left.number_of_points-1];
-    front.endpoints[1] = motion_tube->right.points[motion_tube->right.number_of_points-1];
+    line_segment2d_t front = {
+        .endpoints[0] = {
+            .x = motion_tube->left.points[motion_tube->left.number_of_points-1].x + motion_tube->sampling_interval,
+            .y = motion_tube->left.points[motion_tube->left.number_of_points-1].y},
+        .endpoints[1] = {
+            .x = motion_tube->right.points[motion_tube->right.number_of_points-1].x + motion_tube->sampling_interval,
+            .y = motion_tube->right.points[motion_tube->right.number_of_points-1].y}
+    };
     sample_line_segment(&front, motion_tube->sampling_interval, &motion_tube->front);
 }
 
@@ -110,23 +121,32 @@ void motion_tube_cartesian_sample_steer_left(motion_tube_cartesian_t *motion_tub
     const motion_primitive_t *motion_primitive, const struct MotionPrimitive *MotionPrimitive)
 {
     polyline_t *footprint = &motion_tube->footprint;
-    point2d_t *p_front_left = &footprint->points[FRONT_LEFT];
-    point2d_t *p_front_right = &footprint->points[FRONT_RIGHT];
-    point2d_t *p_axle_left = &footprint->points[AXLE_LEFT];
+    point2d_t p_front_left = {
+        .x = footprint->points[FRONT_LEFT].x,
+        .y = footprint->points[FRONT_LEFT].y + motion_tube->sampling_interval/2
+    };
+    point2d_t p_front_right = {
+        .x = footprint->points[FRONT_RIGHT].x,
+        .y = footprint->points[FRONT_RIGHT].y - motion_tube->sampling_interval/2
+    };
+    point2d_t p_axle_left = {
+        .x = footprint->points[AXLE_LEFT].x,
+        .y = footprint->points[AXLE_LEFT].y + motion_tube->sampling_interval/2
+    };
 
-    pose2d_t pose;
+    pose2d_t pose_final;
     MotionPrimitive->excite(motion_primitive->control, motion_primitive->time_horizon,
-        NULL, &pose);
+        NULL, &pose_final);
         
-    // Position of point of interest for corresponding platform pose
+    // Position of point of interest for corresponding sensor pose
     point2d_t p_front_left_endtime, p_front_right_endtime;
-    rigid_body_2d_transformation(&pose, p_front_left,
+    rigid_body_2d_transformation(&pose_final, &p_front_left,
             &p_front_left_endtime);
-    rigid_body_2d_transformation(&pose, p_front_right,
+    rigid_body_2d_transformation(&pose_final, &p_front_right,
             &p_front_right_endtime);
 
     /* Left side of the template */
-    MotionPrimitive->sample(motion_primitive, p_axle_left, 
+    MotionPrimitive->sample(motion_primitive, &p_axle_left, 
         motion_tube->sampling_interval, &motion_tube->left );
 
     line_segment2d_t left_side;
@@ -137,7 +157,7 @@ void motion_tube_cartesian_sample_steer_left(motion_tube_cartesian_t *motion_tub
     motion_tube->left.number_of_points--;
 
     /* Right side of the template */
-    MotionPrimitive->sample(motion_primitive, p_front_right, 
+    MotionPrimitive->sample(motion_primitive, &p_front_right, 
         motion_tube->sampling_interval, &motion_tube->right );
     motion_tube->right.number_of_points--;
 
@@ -151,11 +171,19 @@ void motion_tube_cartesian_sample_steer_left(motion_tube_cartesian_t *motion_tub
 void motion_tube_cartesian_sample_steer_right(motion_tube_cartesian_t *motion_tube,
     const motion_primitive_t *motion_primitive, const struct MotionPrimitive *MotionPrimitive)
 {
-
     polyline_t *footprint = &motion_tube->footprint;
-    point2d_t *p_front_left = &footprint->points[FRONT_LEFT];
-    point2d_t *p_front_right = &footprint->points[FRONT_RIGHT];
-    point2d_t *p_axle_right = &footprint->points[AXLE_RIGHT];
+    point2d_t p_front_left = {
+        .x = footprint->points[FRONT_LEFT].x,
+        .y = footprint->points[FRONT_LEFT].y + motion_tube->sampling_interval/2
+    };
+    point2d_t p_front_right = {
+        .x = footprint->points[FRONT_RIGHT].x,
+        .y = footprint->points[FRONT_RIGHT].y - motion_tube->sampling_interval/2
+    };
+    point2d_t p_axle_right = {
+        .x = footprint->points[AXLE_RIGHT].x,
+        .y = footprint->points[AXLE_RIGHT].y - motion_tube->sampling_interval/2
+    };
 
     pose2d_t pose;
     MotionPrimitive->excite(motion_primitive->control, motion_primitive->time_horizon,
@@ -163,18 +191,18 @@ void motion_tube_cartesian_sample_steer_right(motion_tube_cartesian_t *motion_tu
         
     // Position of point of interest for corresponding platform pose
     point2d_t p_front_left_endtime, p_front_right_endtime;
-    rigid_body_2d_transformation(&pose, p_front_left,
+    rigid_body_2d_transformation(&pose, &p_front_left,
             &p_front_left_endtime);
-    rigid_body_2d_transformation(&pose, p_front_right,
+    rigid_body_2d_transformation(&pose, &p_front_right,
             &p_front_right_endtime);
 
     /* Left side of the template */
-    MotionPrimitive->sample(motion_primitive, p_front_left, 
+    MotionPrimitive->sample(motion_primitive, &p_front_left, 
         motion_tube->sampling_interval, &motion_tube->left );
     motion_tube->left.number_of_points--;
 
     /* Right side of the template */
-    MotionPrimitive->sample(motion_primitive, p_axle_right, 
+    MotionPrimitive->sample(motion_primitive, &p_axle_right, 
         motion_tube->sampling_interval, &motion_tube->right );
 
     line_segment2d_t right_side;

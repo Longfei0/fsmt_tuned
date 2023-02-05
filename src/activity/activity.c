@@ -76,13 +76,12 @@ void free_space_activity_creation_compute(activity_t *activity)
     free_space_activity_coordination_state_t *coord_state = (free_space_activity_coordination_state_t *)activity->state.coordination_state;
     free_space_activity_continuous_state_t *continuous_state = (free_space_activity_continuous_state_t *)activity->state.computational_state.continuous;
 
-    motion_tube_t *motion_tube = &params->motion_tube;
-    motion_primitive_t *motion_primitive = &params->motion_primitive;
-
-    MotionTube.create(motion_tube);
-    MotionPrimitiveUnicycle.create(motion_primitive);
-
     activity->state.lcsm_flags.creation_complete = false;
+    params->current_velocity.vx = 0;
+    params->current_velocity.wz = 0;
+    params->desired_velocity.vx = .5;
+    params->desired_velocity.wz = 0;
+    params->motion_primitive.time_horizon = 2;
     if (*coord_state->lidar_ready)
     {
         params->range_sensor = *(params->rt_range_sensor);
@@ -160,7 +159,6 @@ void free_space_activity_resource_configuration_compute(activity_t *activity)
     int config_status_free_space_activity;
     configure_free_space_activity_from_file(params->configuration_file,
                                             params, &config_status_free_space_activity);
-
     // template
     motion_tube_t *motion_tube = &params->motion_tube;
     motion_primitive_t *motion_primitive = &params->motion_primitive;
@@ -237,22 +235,30 @@ void free_space_activity_running_communicate_sensor_and_estimation(activity_t *a
     free_space_activity_coordination_state_t *coord_state = (free_space_activity_coordination_state_t *)activity->state.coordination_state;
 
     // Copying range measurements from shared memory to a local buffer
-    pthread_mutex_lock(coord_state->range_scan_lock);
-    params->range_scan.nb_measurements = params->rt_range_scan->nb_measurements;
-    for (int i = 0; i < params->range_scan.nb_measurements; i++)
-    {
-        params->range_scan.measurements[i] = params->rt_range_scan->measurements[i];
-        params->range_scan.angles[i] = params->rt_range_scan->angles[i];
+    if(coord_state->range_scan_lock != NULL){
+        pthread_mutex_lock(coord_state->range_scan_lock);
+        params->range_scan.nb_measurements = params->rt_range_scan->nb_measurements;
+        for (int i = 0; i < params->range_scan.nb_measurements; i++)
+        {
+            params->range_scan.measurements[i] = params->rt_range_scan->measurements[i];
+            params->range_scan.angles[i] = params->rt_range_scan->angles[i];
+        }
+        pthread_mutex_unlock(coord_state->range_scan_lock);
     }
-    pthread_mutex_unlock(coord_state->range_scan_lock);
 
-    // Copying proprioception pose from shared memory to a local buffer
-    // pthread_mutex_lock(coord_state->velocity_lock);
-    // params->current_velocity = *params->rt_current_velocity;
-    // pthread_mutex_unlock(coord_state->velocity_lock);
+    // Copying velocity from shared memory to a local buffer
+    if (coord_state->current_velocity_lock != NULL && params->rt_current_velocity!= NULL ){
+        pthread_mutex_lock(coord_state->current_velocity_lock);
+        params->current_velocity = *params->rt_current_velocity;
+        pthread_mutex_unlock(coord_state->current_velocity_lock);
+    }
 
-    // Copy setpoint
-
+    // Copying velocity setpoint
+    if (coord_state->desired_velocity_lock != NULL && params->rt_desired_velocity!= NULL ){
+        pthread_mutex_lock(coord_state->desired_velocity_lock);
+        params->desired_velocity = *params->rt_desired_velocity;
+        pthread_mutex_unlock(coord_state->desired_velocity_lock);
+    }
 }
 
 void free_space_activity_running_coordinate(activity_t *activity)
@@ -301,14 +307,30 @@ void free_space_activity_running_compute(activity_t *activity)
 
     // Configure motion primitive
     motion_primitive->time_horizon = 2;
-    ((unicycle_control_t *)motion_primitive->control)->angular_rate = -.1;
-    ((unicycle_control_t *)motion_primitive->control)->forward_velocity = .5;
+    ((unicycle_control_t *)motion_primitive->control)->angular_rate = .1;//params->desired_velocity.wz;
+    ((unicycle_control_t *)motion_primitive->control)->forward_velocity = params->desired_velocity.vx;
 
     // Sample motion tube (cartesian & sensor space)
     MotionTube.sample(motion_tube, motion_primitive, range_sensor, pose_sensor);
     // Monitor
     bool is_available = false;
     MotionTube.Monitor.availability(motion_tube, &lidar, &is_available);
+
+
+    printf("maneuver. T: %f, maneuver.v: %.2f, maneuver.w: %.2f, is_available: %d\n", motion_primitive->time_horizon,
+           ((unicycle_control_t *)motion_primitive->control)->forward_velocity, ((unicycle_control_t *)motion_primitive->control)->angular_rate, is_available);
+
+    printf("left has %d points:\n", motion_tube->cartesian.left.number_of_points);
+    for (int i = 0; i < motion_tube->cartesian.left.number_of_points; i++)
+    {
+        int j = i;
+        printf("%d: (x,y) = (%f, %f)", i, motion_tube->cartesian.left.points[i].x, motion_tube->cartesian.left.points[i].y);
+        printf(", range: %.2f, angle: %.2f, index: %d\n",
+               motion_tube->sensor_space.beams[j].range_outer,
+               motion_tube->sensor_space.beams[j].angle * 180 / M_PI,
+               motion_tube->sensor_space.beams[j].index);
+    }
+
     // Copying to range_motion_tube
     range_motion_tube_t *range_motion_tube = &continuous_state->range_motion_tube;
     for (int i = 0; i < motion_tube->sensor_space.number_of_beams; i++)
@@ -332,17 +354,18 @@ void free_space_activity_running_communicate_control(activity_t *activity)
     range_motion_tube_t *rt_range_motion_tube = params->rt_range_motion_tube;
 
     // Copying range measurements from shared memory to a local buffer
-    pthread_mutex_lock(coord_state->motion_tube_lock);
-    for (int i = 0; i < range_motion_tube->number_of_elements; i++)
-    {
-        rt_range_motion_tube->angle[i] = range_motion_tube->angle[i];
-        rt_range_motion_tube->range[i] = range_motion_tube->range[i];
-        rt_range_motion_tube->index[i] = range_motion_tube->index[i];
+    if (coord_state->motion_tube_lock != NULL && params->rt_range_motion_tube!= NULL ){
+        pthread_mutex_lock(coord_state->motion_tube_lock);
+        for (int i = 0; i < range_motion_tube->number_of_elements; i++)
+        {
+            rt_range_motion_tube->angle[i] = range_motion_tube->angle[i];
+            rt_range_motion_tube->range[i] = range_motion_tube->range[i];
+            rt_range_motion_tube->index[i] = range_motion_tube->index[i];
+        }
+        rt_range_motion_tube->number_of_elements = range_motion_tube->number_of_elements;
+        rt_range_motion_tube->available = range_motion_tube->available;
+        pthread_mutex_unlock(coord_state->motion_tube_lock);
     }
-    rt_range_motion_tube->number_of_elements = range_motion_tube->number_of_elements;
-    rt_range_motion_tube->available = range_motion_tube->available;
-    pthread_mutex_unlock(coord_state->motion_tube_lock);
-
 
     // Send velocity to the robot..
 
@@ -395,6 +418,21 @@ void free_space_activity_create_lcsm(activity_t *activity, const char *name_algo
     activity->state.computational_state.continuous = malloc(sizeof(free_space_activity_continuous_state_t));
     activity->state.computational_state.discrete = malloc(sizeof(free_space_activity_discrete_state_t));
     activity->state.coordination_state = malloc(sizeof(free_space_activity_coordination_state_t));
+
+    free_space_activity_params_t *params = (free_space_activity_params_t *) activity->conf.params;
+    motion_tube_t *motion_tube = &params->motion_tube;
+    motion_primitive_t *motion_primitive = &params->motion_primitive;
+    MotionTube.create(motion_tube);
+    MotionPrimitiveUnicycle.create(motion_primitive);
+
+
+    free_space_activity_coordination_state_t *coord_state = (free_space_activity_coordination_state_t *) activity->state.coordination_state;
+    coord_state->range_scan_lock = NULL;
+    coord_state->platform_control_lock = NULL;
+    coord_state->current_velocity_lock = NULL;
+    coord_state->desired_velocity_lock = NULL;
+    coord_state->motion_tube_lock = NULL;
+
 }
 
 void free_space_activity_resource_configure_lcsm(activity_t *activity)
@@ -436,7 +474,7 @@ void configure_free_space_activity_from_file(const char *file_path,
     number_of_params++;
     param_array[number_of_params] = (param_array_t){"max_relative_orientation", &(params->max_relative_orientation), PARAM_TYPE_DOUBLE};
     number_of_params++;
-    param_array[number_of_params] = (param_array_t){"template/sampling_interval", &(params->template_sampling_interval), PARAM_TYPE_DOUBLE};
+    param_array[number_of_params] = (param_array_t){"template/sampling_interval", &(params->motion_tube.cartesian.sampling_interval), PARAM_TYPE_DOUBLE};
     number_of_params++;
     param_array[number_of_params] = (param_array_t){"template/number_of_samples", &(params->template_number_of_samples), PARAM_TYPE_INT};
     number_of_params++;

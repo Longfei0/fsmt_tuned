@@ -46,7 +46,7 @@ typedef struct free_space_activity_params_s{
     range_sensor_t *rt_range_sensor, range_sensor;
     range_scan_t *rt_range_scan, range_scan;
     velocity_t *rt_current_velocity, current_velocity;
-    velocity_t *rt_des_platform_velocity; 
+    velocity_t *rt_desired_velocity, desired_velocity; 
     
     // platform and sensor params
     kelo_tricycle_t *platform;
@@ -69,6 +69,17 @@ typedef struct free_space_activity_params_s{
 
     range_motion_tube_t *rt_range_motion_tube;    
     
+
+    // The user will provide an input velocity des_vx, des_wz.
+    // we will compute motion tubes from curr_vx +- dvx and curr_wz +- dwz and t1, t2, t3, t4(5 seg)
+    // t4, des_vx, des_wz is available?  
+    // t3, des_vx, des_wz is available? 
+    // Is there any t4 available? Choose the closest one. (if w is low, choose closest in absolute value)
+    // Is there any t3 available? Choose the closest one.
+    // Is there any t2 available? Choose the closest one.
+    // Is there any t1 available? Choose the closest one, get ready for collision.
+
+    // We will choose the one available one that has  the most similar curvature.
 }free_space_activity_params_t;
 
 // Continuous state
@@ -90,8 +101,8 @@ typedef struct free_space_coordination_state_s {
     bool *platform_control_ready, *platform_control_dead;
     bool *lidar_ready, *lidar_dead; 
     // Mutex
-    pthread_mutex_t *range_scan_lock, *platform_control_lock, *velocity_lock;
-    pthread_mutex_t *motion_tube_lock;
+    pthread_mutex_t *range_scan_lock, *platform_control_lock, *current_velocity_lock;
+    pthread_mutex_t *desired_velocity_lock, *motion_tube_lock;
 } free_space_activity_coordination_state_t;
 
 extern const free_space_activity_t ec_free_space_activity;

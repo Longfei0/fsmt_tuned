@@ -48,8 +48,8 @@ int main(void) {
   range_motion_tube_t range_motion_tube;
   velocity_t rt_current_velocity;
   kelo_tricycle_t platform;
-  velocity_t rt_des_platform_velocity;
-  pthread_mutex_t range_sensor_lock, platform_control_lock, velocity_lock;
+  velocity_t rt_desired_velocity;
+  pthread_mutex_t range_sensor_lock, platform_control_lock, current_velocity_lock;
   pthread_mutex_t motion_tube_lock;
   // Shared memory
   free_space_activity_coordination_state_t  *coord_state = 
@@ -65,11 +65,11 @@ int main(void) {
   coord_state->lidar_dead = &lidar_dead;
   coord_state->deinitialisation_request = &deinitialisation_request;
   coord_state->range_scan_lock = &range_sensor_lock;
-  coord_state->velocity_lock = &velocity_lock;
+  coord_state->current_velocity_lock = &current_velocity_lock;
   coord_state->platform_control_lock = &platform_control_lock;
   coord_state->motion_tube_lock = &motion_tube_lock;
 
-  params->rt_des_platform_velocity = &rt_des_platform_velocity;
+  params->rt_desired_velocity = &rt_desired_velocity;
   params->rt_current_velocity = &rt_current_velocity;
   params->rt_range_scan = &rt_range_scan;
   params->rt_range_sensor = &range_sensor;
