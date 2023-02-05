@@ -40,7 +40,7 @@ typedef struct free_space_beam_s{
 
 typedef struct motion_tube_cartesian_s{
     point2d_array_t left, front, right;
-    polyline_t footprint;
+    point2d_t footprint[4];
     double sampling_interval;
 }motion_tube_cartesian_t;
 

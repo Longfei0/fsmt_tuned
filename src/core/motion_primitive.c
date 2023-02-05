@@ -57,8 +57,12 @@ void motion_primitive_unicycle_sample(const motion_primitive_t *motion_primitive
         sampling_time = (sampling_interval/(fabs(control->angular_rate)*radius_at_point));
     }
     // Refine sampling time such that samples at t=0 and t=time_horizon are included
-    number_of_samples = (int) ceil(motion_primitive->time_horizon/sampling_time) + 1; 
-    sampling_time = motion_primitive->time_horizon/(number_of_samples - 1); 
+    if (motion_primitive->time_horizon > 0){    // Only predict trajectory in the  future
+        number_of_samples = (int) ceil(motion_primitive->time_horizon/sampling_time) + 1; 
+        sampling_time = motion_primitive->time_horizon/(number_of_samples - 1); 
+    }else{
+        number_of_samples = 0;
+    }
 
     pose2d_t pose;
     for(int i=0; i<number_of_samples; i++){

@@ -79,9 +79,10 @@ void free_space_activity_creation_compute(activity_t *activity)
     activity->state.lcsm_flags.creation_complete = false;
     params->current_velocity.vx = 0;
     params->current_velocity.wz = 0;
-    params->desired_velocity.vx = .5;
+    params->desired_velocity.vx = 0;
     params->desired_velocity.wz = 0;
-    params->motion_primitive.time_horizon = 2;
+    params->motion_primitive.time_horizon = 0;
+
     if (*coord_state->lidar_ready)
     {
         params->range_sensor = *(params->rt_range_sensor);
@@ -151,31 +152,18 @@ void free_space_activity_resource_configuration_compute(activity_t *activity)
     free_space_activity_params_t *params = (free_space_activity_params_t *)activity->conf.params;
     free_space_activity_continuous_state_t *continuous_state = (free_space_activity_continuous_state_t *)activity->state.computational_state.continuous;
 
-    params->body.type = POLYLINE;
-    params->body.geometry = (polyline_t *)malloc(sizeof(polyline_t));
-    ((polyline_t *)params->body.geometry)->points = (point2d_t *)malloc(4 * sizeof(point2d_t));
-
     // Read file
     int config_status_free_space_activity;
     configure_free_space_activity_from_file(params->configuration_file,
                                             params, &config_status_free_space_activity);
-    // template
+
     motion_tube_t *motion_tube = &params->motion_tube;
     motion_primitive_t *motion_primitive = &params->motion_primitive;
-    pose2d_t *pose_sensor = &params->pose_sensor;
     
     // Memory allocation
-    size_t max_number_of_samples[1] = {50};
+    size_t max_number_of_samples[1] = {params->max_number_of_samples};
     MotionTube.allocate_memory(motion_tube, max_number_of_samples, 1);
     MotionPrimitiveUnicycle.allocate_memory(motion_primitive);
-
-    polyline_t *geometry = (polyline_t *)params->body.geometry;
-    for (int i = 0; i < 4; i++)
-    {
-        motion_tube->cartesian.footprint.points[i].x = geometry->points[i].x;
-        motion_tube->cartesian.footprint.points[i].y = geometry->points[i].y;
-    }
-    motion_tube->cartesian.sampling_interval = 0.1;
 
     // Set the flag below to true when the resource configuartion behaviour has finished
     activity->state.lcsm_flags.resource_configuration_complete = true;
@@ -306,29 +294,18 @@ void free_space_activity_running_compute(activity_t *activity)
     pose2d_t *pose_sensor = &params->pose_sensor;
 
     // Configure motion primitive
-    motion_primitive->time_horizon = 2;
-    ((unicycle_control_t *)motion_primitive->control)->angular_rate = .1;//params->desired_velocity.wz;
-    ((unicycle_control_t *)motion_primitive->control)->forward_velocity = params->desired_velocity.vx;
-
-    // Sample motion tube (cartesian & sensor space)
-    MotionTube.sample(motion_tube, motion_primitive, range_sensor, pose_sensor);
-    // Monitor
     bool is_available = false;
-    MotionTube.Monitor.availability(motion_tube, &lidar, &is_available);
+    for(int k=0; k<21; k++){
+        for(int i=0; i<3; i++){ // time horizons
+            motion_primitive->time_horizon = params->time_horizon[i];
+            ((unicycle_control_t *)motion_primitive->control)->angular_rate = params->desired_velocity.wz;
+            ((unicycle_control_t *)motion_primitive->control)->forward_velocity = 0.5;//params->desired_velocity.vx;
 
-
-    printf("maneuver. T: %f, maneuver.v: %.2f, maneuver.w: %.2f, is_available: %d\n", motion_primitive->time_horizon,
-           ((unicycle_control_t *)motion_primitive->control)->forward_velocity, ((unicycle_control_t *)motion_primitive->control)->angular_rate, is_available);
-
-    printf("left has %d points:\n", motion_tube->cartesian.left.number_of_points);
-    for (int i = 0; i < motion_tube->cartesian.left.number_of_points; i++)
-    {
-        int j = i;
-        printf("%d: (x,y) = (%f, %f)", i, motion_tube->cartesian.left.points[i].x, motion_tube->cartesian.left.points[i].y);
-        printf(", range: %.2f, angle: %.2f, index: %d\n",
-               motion_tube->sensor_space.beams[j].range_outer,
-               motion_tube->sensor_space.beams[j].angle * 180 / M_PI,
-               motion_tube->sensor_space.beams[j].index);
+            // Sample motion tube (cartesian & sensor space)
+            MotionTube.sample(motion_tube, params->sampling_interval[i], motion_primitive, range_sensor, pose_sensor);
+            // Monitor
+            MotionTube.Monitor.availability(motion_tube, &lidar, &is_available);
+        }
     }
 
     // Copying to range_motion_tube
@@ -468,44 +445,43 @@ void configure_free_space_activity_from_file(const char *file_path,
 
     int i = 0; // Keeps tracks of amount of elements inside param_array
 
-    param_array[number_of_params] = (param_array_t){"number_of_maneuvers", &params->number_of_maneuvers, PARAM_TYPE_INT};
-    number_of_params++;
-    param_array[number_of_params] = (param_array_t){"min_relative_orientation", &(params->min_relative_orientation), PARAM_TYPE_DOUBLE};
-    number_of_params++;
-    param_array[number_of_params] = (param_array_t){"max_relative_orientation", &(params->max_relative_orientation), PARAM_TYPE_DOUBLE};
-    number_of_params++;
-    param_array[number_of_params] = (param_array_t){"template/sampling_interval", &(params->motion_tube.cartesian.sampling_interval), PARAM_TYPE_DOUBLE};
-    number_of_params++;
-    param_array[number_of_params] = (param_array_t){"template/number_of_samples", &(params->template_number_of_samples), PARAM_TYPE_INT};
-    number_of_params++;
-    param_array[number_of_params] = (param_array_t){"template/maneuver/nominal_forward_velocity", &(params->nominal_forward_velocity), PARAM_TYPE_DOUBLE};
-    number_of_params++;
-    param_array[number_of_params] = (param_array_t){"template/maneuver/time_horizon", &(params->time_horizon), PARAM_TYPE_DOUBLE};
-    number_of_params++;
-
-    polyline_t *geometry = (polyline_t *)params->body.geometry;
-    param_array[number_of_params] = (param_array_t){"body/front/left/x", &(geometry->points[FRONT_LEFT].x), PARAM_TYPE_DOUBLE};
-    number_of_params++;
-    param_array[number_of_params] = (param_array_t){"body/front/left/y", &(geometry->points[FRONT_LEFT].y), PARAM_TYPE_DOUBLE};
-    number_of_params++;
-    param_array[number_of_params] = (param_array_t){"body/front/right/x", &(geometry->points[FRONT_RIGHT].x), PARAM_TYPE_DOUBLE};
-    number_of_params++;
-    param_array[number_of_params] = (param_array_t){"body/front/right/y", &(geometry->points[FRONT_RIGHT].y), PARAM_TYPE_DOUBLE};
-    number_of_params++;
-    param_array[number_of_params] = (param_array_t){"body/axle/left/x", &(geometry->points[AXLE_LEFT].x), PARAM_TYPE_DOUBLE};
-    number_of_params++;
-    param_array[number_of_params] = (param_array_t){"body/axle/left/y", &(geometry->points[AXLE_LEFT].y), PARAM_TYPE_DOUBLE};
-    number_of_params++;
-    param_array[number_of_params] = (param_array_t){"body/axle/right/x", &(geometry->points[AXLE_RIGHT].x), PARAM_TYPE_DOUBLE};
-    number_of_params++;
-    param_array[number_of_params] = (param_array_t){"body/axle/right/y", &(geometry->points[AXLE_RIGHT].y), PARAM_TYPE_DOUBLE};
-    number_of_params++;
-
     param_array[number_of_params] = (param_array_t){"range_sensor/pose/x", &(params->pose_sensor.x), PARAM_TYPE_DOUBLE};
     number_of_params++;
-    param_array[number_of_params] = (param_array_t){"range_sensor/pose/y", &(params->pose_sensor.x), PARAM_TYPE_DOUBLE};
+    param_array[number_of_params] = (param_array_t){"range_sensor/pose/y", &(params->pose_sensor.y), PARAM_TYPE_DOUBLE};
     number_of_params++;
-    param_array[number_of_params] = (param_array_t){"range_sensor/pose/yaw", &(params->pose_sensor.x), PARAM_TYPE_DOUBLE};
+    param_array[number_of_params] = (param_array_t){"range_sensor/pose/yaw", &(params->pose_sensor.yaw), PARAM_TYPE_DOUBLE};
+    number_of_params++;
+
+    param_array[number_of_params] = (param_array_t){"motion_tube/max_number_of_samples", &(params->max_number_of_samples), PARAM_TYPE_INT};
+    number_of_params++;
+    param_array[number_of_params] = (param_array_t){"motion_tube/sampling_interval/green", &(params->sampling_interval[0]), PARAM_TYPE_DOUBLE};
+    number_of_params++;
+    param_array[number_of_params] = (param_array_t){"motion_tube/sampling_interval/yellow", &(params->sampling_interval[1]), PARAM_TYPE_DOUBLE};
+    number_of_params++;
+    param_array[number_of_params] = (param_array_t){"motion_tube/sampling_interval/red", &(params->sampling_interval[2]), PARAM_TYPE_DOUBLE};
+    number_of_params++;
+    param_array[number_of_params] = (param_array_t){"motion_tube/time_horizon/green", &(params->time_horizon[0]), PARAM_TYPE_DOUBLE};
+    number_of_params++;
+    param_array[number_of_params] = (param_array_t){"motion_tube/time_horizon/yellow", &(params->time_horizon[1]), PARAM_TYPE_DOUBLE};
+    number_of_params++;
+    param_array[number_of_params] = (param_array_t){"motion_tube/time_horizon/red", &(params->time_horizon[2]), PARAM_TYPE_DOUBLE};
+    number_of_params++;
+
+    param_array[number_of_params] = (param_array_t){"footprint/front/left/x", &(params->footprint[FRONT_LEFT].x), PARAM_TYPE_DOUBLE};
+    number_of_params++;
+    param_array[number_of_params] = (param_array_t){"footprint/front/left/y", &(params->footprint[FRONT_LEFT].y), PARAM_TYPE_DOUBLE};
+    number_of_params++;
+    param_array[number_of_params] = (param_array_t){"footprint/front/right/x", &(params->footprint[FRONT_RIGHT].x), PARAM_TYPE_DOUBLE};
+    number_of_params++;
+    param_array[number_of_params] = (param_array_t){"footprint/front/right/y", &(params->footprint[FRONT_RIGHT].y), PARAM_TYPE_DOUBLE};
+    number_of_params++;
+    param_array[number_of_params] = (param_array_t){"footprint/axle/left/x", &(params->footprint[AXLE_LEFT].x), PARAM_TYPE_DOUBLE};
+    number_of_params++;
+    param_array[number_of_params] = (param_array_t){"footprint/axle/left/y", &(params->footprint[AXLE_LEFT].y), PARAM_TYPE_DOUBLE};
+    number_of_params++;
+    param_array[number_of_params] = (param_array_t){"footprint/axle/right/x", &(params->footprint[AXLE_RIGHT].x), PARAM_TYPE_DOUBLE};
+    number_of_params++;
+    param_array[number_of_params] = (param_array_t){"footprint/axle/right/y", &(params->footprint[AXLE_RIGHT].y), PARAM_TYPE_DOUBLE};
     number_of_params++;
     // generic reader function
     int config_status_activity;
@@ -529,6 +505,13 @@ void configure_free_space_activity_from_file(const char *file_path,
 // Debugging prints!
 /*
 
+    printf("maneuver. T: %f, maneuver.v: %.2f, maneuver.w: %.2f, is_available: %d\n", params->time_horizon[i],
+        ((unicycle_control_t *)motion_primitive->control)->forward_velocity, ((unicycle_control_t *)motion_primitive->control)->angular_rate, is_available);
+
+    printf("left has %d points:\n", motion_tube->cartesian.left.number_of_points);
+    printf("front has %d points:\n", motion_tube->cartesian.front.number_of_points);
+    printf("right has %d points:\n", motion_tube->cartesian.right.number_of_points);
+
     printf("maneuver. T: %f, maneuver.v: %.2f, maneuver.w: %.2f, is_available: %d\n", motion_primitive->time_horizon,
            ((unicycle_control_t *)motion_primitive->control)->forward_velocity, ((unicycle_control_t *)motion_primitive->control)->angular_rate, is_available);
 
@@ -543,29 +526,28 @@ void configure_free_space_activity_from_file(const char *file_path,
                motion_tube->sensor_space.beams[j].index);
     }
 
-
-    printf("front has %d points:\n", cartesian_motion_tube.front.number_of_points);
-    for(int i=0; i<cartesian_motion_tube.front.number_of_points; i++){
-        printf("%d: (x,y) = (%f, %f)", i, cartesian_motion_tube.front.points[i].x, cartesian_motion_tube.front.points[i].y);
-        int j = i+cartesian_motion_tube.left.number_of_points;
+    printf("front has %d points:\n", motion_tube->cartesian.front.number_of_points);
+    for(int i=0; i<motion_tube->cartesian.front.number_of_points; i++){
+        printf("%d: (x,y) = (%f, %f)", i, motion_tube->cartesian.front.points[i].x, motion_tube->cartesian.front.points[i].y);
+        int j = i+motion_tube->cartesian.left.number_of_points;
         printf(", range: %.2f, angle: %.2f, index: %d\n",
-            sensor_space_motion_tube.beams[j].range_outer,
-            sensor_space_motion_tube.beams[j].angle*180/M_PI,
-            sensor_space_motion_tube.beams[j].index);
+             motion_tube->sensor_space.beams[j].range_outer,
+             motion_tube->sensor_space.beams[j].angle*180/M_PI,
+             motion_tube->sensor_space.beams[j].index);
     }
 
-    printf("right has %d points:\n", cartesian_motion_tube.right.number_of_points);
-    for(int i=0; i<cartesian_motion_tube.right.number_of_points; i++){
-        printf("%d: (x,y) = (%f, %f)", i, cartesian_motion_tube.right.points[i].x, cartesian_motion_tube.right.points[i].y);
-        int j = i+cartesian_motion_tube.front.number_of_points+cartesian_motion_tube.left.number_of_points;
-        if (j+1 > sensor_space_motion_tube.number_of_beams){
+    printf("right has %d points:\n", motion_tube->cartesian.right.number_of_points);
+    for(int i=0; i<motion_tube->cartesian.right.number_of_points; i++){
+        printf("%d: (x,y) = (%f, %f)", i, motion_tube->cartesian.right.points[i].x, motion_tube->cartesian.right.points[i].y);
+        int j = i+motion_tube->cartesian.front.number_of_points+motion_tube->cartesian.left.number_of_points;
+        if (j+1 >  motion_tube->sensor_space.number_of_beams){
             printf("\n");
             continue;
         }
         printf(", range: %.2f, angle: %.2f, index: %d\n",
-            sensor_space_motion_tube.beams[j].range_outer,
-            sensor_space_motion_tube.beams[j].angle*180/M_PI,
-            sensor_space_motion_tube.beams[j].index);
+             motion_tube->sensor_space.beams[j].range_outer,
+             motion_tube->sensor_space.beams[j].angle*180/M_PI,
+             motion_tube->sensor_space.beams[j].index);
     }
 
     printf("--------------------\n");

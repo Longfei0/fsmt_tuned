@@ -31,7 +31,7 @@ struct MotionTube{
     void (*allocate_memory)(motion_tube_t*, size_t *, uint8_t);
     void (*deallocate_memory)(motion_tube_t*);
     
-    void (*sample)(motion_tube_t*, const motion_primitive_t*, 
+    void (*sample)(motion_tube_t*, double, const motion_primitive_t*, 
         const range_sensor_t*, const pose2d_t*);
     struct{
         void(*availability)(const motion_tube_t*, const lidar_t*, bool*);
@@ -47,8 +47,9 @@ void motion_tube_allocate_memory(motion_tube_t *motion_tube,
 
 void motion_tube_deallocate_memory(motion_tube_t *motion_tube);
 
-void motion_tube_sample(motion_tube_t*, const motion_primitive_t* motion_primitive,
-    const range_sensor_t* range_sensor, const pose2d_t* pose_sensor);
+void motion_tube_sample(motion_tube_t*, double sampling_interval, 
+    const motion_primitive_t* motion_primitive, const range_sensor_t* range_sensor, 
+    const pose2d_t* pose_sensor);
 
 void motion_tube_availability(const motion_tube_t* motion_tube, const lidar_t* lidar, bool* is_available);
 

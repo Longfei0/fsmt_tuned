@@ -56,16 +56,12 @@ typedef struct free_space_activity_params_s{
     motion_primitive_t motion_primitive;
     pose2d_t pose_sensor;
 
-    maneuver_t maneuver;
-    body_t body;
 
     // Parameters
-    int number_of_maneuvers;
-    double time_horizon;
-    double nominal_forward_velocity;
-    double template_sampling_interval;
-    int template_number_of_samples;
-    double max_relative_orientation, min_relative_orientation;
+    point2d_t footprint[4];
+    double time_horizon[3];
+    double sampling_interval[3];
+    int max_number_of_samples;
 
     range_motion_tube_t *rt_range_motion_tube;    
     
