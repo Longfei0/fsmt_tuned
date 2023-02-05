@@ -1,4 +1,11 @@
 {
+    "range_sensor":{
+        "pose":{
+            "x": 0.27,
+            "y": 0,
+            "yaw": 0
+        }
+    },
     "number_of_maneuvers": 31,
     "max_relative_orientation": 1.57,
     "min_relative_orientation": -1.57,
