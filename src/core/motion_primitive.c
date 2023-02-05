@@ -44,7 +44,12 @@ void motion_primitive_unicycle_sample(const motion_primitive_t *motion_primitive
     int number_of_samples;
 
     if (control->angular_rate == 0){    
-        sampling_time = sampling_interval/fabs(control->forward_velocity);
+        if (control->forward_velocity == 0){
+            number_of_samples = 0;
+            return;
+        }else{
+            sampling_time = sampling_interval/fabs(control->forward_velocity);
+        }
     }else{
         double radius_at_origin = control->forward_velocity/control->angular_rate;
         double radius_at_point = sqrt(pow(offset->x,2) + 
