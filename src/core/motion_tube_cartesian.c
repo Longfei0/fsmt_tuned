@@ -14,12 +14,6 @@ void motion_tube_cartesian_create(motion_tube_cartesian_t *motion_tube){
         side[i]->max_number_of_points = 0;
         side[i]->points = NULL;    
     }
-    // Initialise the robot as a point
-    for(int i=0; i<4; i++){
-        motion_tube->footprint[0].x = 0;
-        motion_tube->footprint[0].y = 0;
-    }
-
 }
 
 void motion_tube_cartesian_allocate_memory(motion_tube_cartesian_t *motion_tube, 
@@ -58,7 +52,7 @@ void motion_tube_cartesian_deallocate_memory(motion_tube_cartesian_t *motion_tub
 }
 
 void motion_tube_cartesian_sample(motion_tube_cartesian_t *motion_tube, double sampling_interval,
-    const motion_primitive_t *motion_primitive)
+    const point2d_t *footprint, const motion_primitive_t *motion_primitive)
 {
     motion_tube->left.number_of_points = 0;
     motion_tube->front.number_of_points = 0;
@@ -69,29 +63,29 @@ void motion_tube_cartesian_sample(motion_tube_cartesian_t *motion_tube, double s
         if (control->angular_rate == 0){
             if (control->forward_velocity != 0){
                 motion_tube_cartesian_sample_move_straight(motion_tube, sampling_interval,  
-                    motion_primitive, &MotionPrimitiveUnicycle);
+                    footprint, motion_primitive, &MotionPrimitiveUnicycle);
             }
         } else if (control->angular_rate > 0){
             motion_tube_cartesian_sample_steer_left(motion_tube, sampling_interval,
-                motion_primitive, &MotionPrimitiveUnicycle);
+                footprint, motion_primitive, &MotionPrimitiveUnicycle);
         } else if (control->angular_rate < 0){
             motion_tube_cartesian_sample_steer_right(motion_tube, sampling_interval, 
-                motion_primitive, &MotionPrimitiveUnicycle);
+                footprint, motion_primitive, &MotionPrimitiveUnicycle);
         }
     }
 }
 
 void motion_tube_cartesian_sample_move_straight(motion_tube_cartesian_t *motion_tube,
-    double sampling_interval, const motion_primitive_t *motion_primitive, 
+    double sampling_interval, const point2d_t* footprint, const motion_primitive_t *motion_primitive, 
     const struct MotionPrimitive *MotionPrimitive)
 {
     point2d_t p_front_left = {
-        .x = motion_tube->footprint[FRONT_LEFT].x,
-        .y = motion_tube->footprint[FRONT_LEFT].y + sampling_interval
+        .x = footprint[FRONT_LEFT].x,
+        .y = footprint[FRONT_LEFT].y + sampling_interval
     };
     point2d_t p_front_right = {
-        .x = motion_tube->footprint[FRONT_RIGHT].x,
-        .y = motion_tube->footprint[FRONT_RIGHT].y - sampling_interval
+        .x = footprint[FRONT_RIGHT].x,
+        .y = footprint[FRONT_RIGHT].y - sampling_interval
     };
 
     // Left side
@@ -113,20 +107,20 @@ void motion_tube_cartesian_sample_move_straight(motion_tube_cartesian_t *motion_
 }
 
 void motion_tube_cartesian_sample_steer_left(motion_tube_cartesian_t *motion_tube, 
-    double sampling_interval, const motion_primitive_t *motion_primitive, 
+    double sampling_interval, const point2d_t* footprint, const motion_primitive_t *motion_primitive, 
     const struct MotionPrimitive *MotionPrimitive)
 {
     point2d_t p_front_left = {
-        .x = motion_tube->footprint[FRONT_LEFT].x,
-        .y = motion_tube->footprint[FRONT_LEFT].y + sampling_interval/2
+        .x = footprint[FRONT_LEFT].x,
+        .y = footprint[FRONT_LEFT].y + sampling_interval/2
     };
     point2d_t p_front_right = {
-        .x = motion_tube->footprint[FRONT_RIGHT].x,
-        .y = motion_tube->footprint[FRONT_RIGHT].y - sampling_interval/2
+        .x = footprint[FRONT_RIGHT].x,
+        .y = footprint[FRONT_RIGHT].y - sampling_interval/2
     };
     point2d_t p_axle_left = {
-        .x = motion_tube->footprint[AXLE_LEFT].x,
-        .y = motion_tube->footprint[AXLE_LEFT].y + sampling_interval/2
+        .x = footprint[AXLE_LEFT].x,
+        .y = footprint[AXLE_LEFT].y + sampling_interval/2
     };
 
     pose2d_t pose_final;
@@ -164,20 +158,20 @@ void motion_tube_cartesian_sample_steer_left(motion_tube_cartesian_t *motion_tub
 }
 
 void motion_tube_cartesian_sample_steer_right(motion_tube_cartesian_t *motion_tube,
-    double sampling_interval, const motion_primitive_t *motion_primitive, 
+    double sampling_interval, const point2d_t* footprint, const motion_primitive_t *motion_primitive, 
     const struct MotionPrimitive *MotionPrimitive)
 {
     point2d_t p_front_left = {
-        .x = motion_tube->footprint[FRONT_LEFT].x,
-        .y = motion_tube->footprint[FRONT_LEFT].y + sampling_interval/2
+        .x = footprint[FRONT_LEFT].x,
+        .y = footprint[FRONT_LEFT].y + sampling_interval/2
     };
     point2d_t p_front_right = {
-        .x = motion_tube->footprint[FRONT_RIGHT].x,
-        .y = motion_tube->footprint[FRONT_RIGHT].y - sampling_interval/2
+        .x = footprint[FRONT_RIGHT].x,
+        .y = footprint[FRONT_RIGHT].y - sampling_interval/2
     };
     point2d_t p_axle_right = {
-        .x = motion_tube->footprint[AXLE_RIGHT].x,
-        .y = motion_tube->footprint[AXLE_RIGHT].y - sampling_interval/2
+        .x = footprint[AXLE_RIGHT].x,
+        .y = footprint[AXLE_RIGHT].y - sampling_interval/2
     };
 
     pose2d_t pose;

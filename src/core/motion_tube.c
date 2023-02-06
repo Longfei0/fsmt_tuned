@@ -40,11 +40,11 @@ void motion_tube_deallocate_memory(motion_tube_t *motion_tube){
     MotionTubeSensorSpace.deallocate_memory(&motion_tube->sensor_space);
 }
 
-void motion_tube_sample(motion_tube_t* motion_tube, 
-    double sampling_interval,const motion_primitive_t* motion_primitive,
+void motion_tube_sample(motion_tube_t* motion_tube, double sampling_interval,
+    const point2d_t *footprint,const motion_primitive_t* motion_primitive,
      const range_sensor_t* range_sensor, const pose2d_t* pose_sensor){
     // Cartesian
-    MotionTubeCartesian.sample(&motion_tube->cartesian, sampling_interval, motion_primitive);
+    MotionTubeCartesian.sample(&motion_tube->cartesian, sampling_interval, footprint, motion_primitive);
     // Sensor space
     motion_tube_cartesian_to_sensor_space(&motion_tube->cartesian,
         range_sensor, pose_sensor, &motion_tube->sensor_space);

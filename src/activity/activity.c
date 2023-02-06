@@ -81,8 +81,7 @@ void free_space_activity_creation_compute(activity_t *activity)
     params->current_velocity.wz = 0;
     params->desired_velocity.vx = 0;
     params->desired_velocity.wz = 0;
-    params->motion_primitive.time_horizon = 0;
-
+ 
     if (*coord_state->lidar_ready)
     {
         params->range_sensor = *(params->rt_range_sensor);
@@ -156,14 +155,28 @@ void free_space_activity_resource_configuration_compute(activity_t *activity)
     int config_status_free_space_activity;
     configure_free_space_activity_from_file(params->configuration_file,
                                             params, &config_status_free_space_activity);
-
-    motion_tube_t *motion_tube = &params->motion_tube;
-    motion_primitive_t *motion_primitive = &params->motion_primitive;
     
     // Memory allocation
     size_t max_number_of_samples[1] = {params->max_number_of_samples};
-    MotionTube.allocate_memory(motion_tube, max_number_of_samples, 1);
-    MotionPrimitiveUnicycle.allocate_memory(motion_primitive);
+
+    // Building templates
+    double forward_vel[6] = {0, 0.05, 0.1, 0.15, 0.2, 0.3};
+    double angular_rate[17] = {-30, -25, -20, -15, -10, -5, 2, 1, 0, 1, 2, 5, 10, 15, 20, 25, 30};
+    for(int i=0; i<3; i++){
+        for(int j=0; j<6; j++){
+            for(int k=0; k<17; k++){
+                // Memory allocation
+                MotionTube.allocate_memory(&params->motion_tube[i][j][k], max_number_of_samples, 1);
+                MotionPrimitiveUnicycle.allocate_memory(&params->motion_primitive[i][j][k]);
+                // Sample motion tube (cartesian & sensor space)    
+                params->motion_primitive[i][j][k].time_horizon = params->time_horizon[i];
+                ((unicycle_control_t *) params->motion_primitive[i][j][k].control)->forward_velocity = forward_vel[j];
+                ((unicycle_control_t *) params->motion_primitive[i][j][k].control)->angular_rate = angular_rate[k]*(M_PI/180);
+                MotionTube.sample(&params->motion_tube[i][j][k], params->sampling_interval[i], 
+                    params->footprint, &params->motion_primitive[i][j][k], &params->range_sensor, &params->pose_sensor);
+            }
+        }
+    }
 
     // Set the flag below to true when the resource configuartion behaviour has finished
     activity->state.lcsm_flags.resource_configuration_complete = true;
@@ -288,37 +301,86 @@ void free_space_activity_running_compute(activity_t *activity)
     range_sensor_t *range_sensor = &params->range_sensor; // parameters of the range sensor
     lidar_t lidar = {.range_scan = range_scan, .range_sensor = range_sensor};
 
-    // Motion tube
-    motion_tube_t *motion_tube = &params->motion_tube;
-    motion_primitive_t *motion_primitive = &params->motion_primitive;
-    pose2d_t *pose_sensor = &params->pose_sensor;
+    velocity_t *current_velocity = &params->current_velocity;
+    velocity_t *desired_velocity = &params->desired_velocity;
+    // // Motion tube
+    double forward_vel[6] = {0, 0.05, 0.1, 0.15, 0.2, 0.3};
+    double angular_rate[17] = {-30, -25, -20, -15, -10, -5, 2, 1, 0, 1, 2, 5, 10, 15, 20, 25, 30};
 
-    // Configure motion primitive
-    bool is_available = false;
-    for(int k=0; k<21; k++){
-        for(int i=0; i<3; i++){ // time horizons
-            motion_primitive->time_horizon = params->time_horizon[i];
-            ((unicycle_control_t *)motion_primitive->control)->angular_rate = params->desired_velocity.wz;
-            ((unicycle_control_t *)motion_primitive->control)->forward_velocity = 0.5;//params->desired_velocity.vx;
+    double max_forward_vel_step = 0.1;
+    double max_angular_rate_step = 0.1;
+    uint8_t velocity_availability[6][17] = {0};
 
-            // Sample motion tube (cartesian & sensor space)
-            MotionTube.sample(motion_tube, params->sampling_interval[i], motion_primitive, range_sensor, pose_sensor);
-            // Monitor
-            MotionTube.Monitor.availability(motion_tube, &lidar, &is_available);
+    for(int i=0; i<6; i++){
+        if (fabs(current_velocity->vx - forward_vel[i]) > max_forward_vel_step){
+            continue;
+        }
+        for(int j=0; j<17; j++){
+            if(fabs(current_velocity->wz - angular_rate[j]*(M_PI/180) ) > max_angular_rate_step){
+                continue;
+            }
+            for(int k=0; k<3; k++){  
+                bool is_available = false;             
+                MotionTube.Monitor.availability(&params->motion_tube[k][i][j], &lidar, &is_available);
+                if(is_available){
+                    velocity_availability[i][j] += 1;
+                }else{
+                    break;
+                }
+            }
         }
     }
 
-    // Copying to range_motion_tube
-    range_motion_tube_t *range_motion_tube = &continuous_state->range_motion_tube;
-    for (int i = 0; i < motion_tube->sensor_space.number_of_beams; i++)
-    {
-        range_motion_tube->angle[i] = motion_tube->sensor_space.beams[i].angle;
-        range_motion_tube->range[i] = motion_tube->sensor_space.beams[i].range_outer;
-        range_motion_tube->index[i] = motion_tube->sensor_space.beams[i].index;
-    }
-    range_motion_tube->number_of_elements = motion_tube->sensor_space.number_of_beams;
-    range_motion_tube->available = is_available;
+    struct{
+        int horizon;
+        double forward_vel, error_forward_vel;
+        double angular_rate, error_angular_rate;
+        int i, j;
+    }solution;
+    solution.horizon = 0;
+    solution.forward_vel = 0;
+    solution.angular_rate = 0;
+    solution.error_angular_rate = INFINITY;
+    solution.error_forward_vel = INFINITY;
 
+    for(int i=0; i<6; i++){
+        for(int j=0; j<17; j++){
+            if(velocity_availability[i][j] > 0 && velocity_availability[i][j] >= solution.horizon){
+                double curr_angular_rate_error = fabs(angular_rate[j]*(M_PI/180) - desired_velocity->vx);
+                 if(curr_angular_rate_error <= solution.error_angular_rate){
+                    // Maybe check if wz.desired != 0, the check curvature error
+                    double curr_forward_vel_error = fabs(forward_vel[i] - desired_velocity->wz);
+                    if(curr_forward_vel_error <= solution.error_forward_vel){
+                        solution.horizon = velocity_availability[i][j]; 
+                        solution.forward_vel = forward_vel[i];
+                        solution.angular_rate = angular_rate[j]*(M_PI/180);
+                        solution.error_forward_vel = curr_forward_vel_error;
+                        solution.error_angular_rate = curr_angular_rate_error;
+                        solution.i = i;
+                        solution.j = j;
+                    }
+                }                
+            }
+        }
+    }
+
+    // // Copying to range_motion_tube
+    range_motion_tube_t *range_motion_tube = &continuous_state->range_motion_tube;
+    if(solution.horizon > 0){
+        int i = solution.i;
+        int j = solution.j;
+        for (int k = 0; k < params->motion_tube[i][j]->sensor_space.number_of_beams; k++)
+        {
+            range_motion_tube->angle[k] = params->motion_tube[i][j]->sensor_space.beams[i].angle;
+            range_motion_tube->range[k] = params->motion_tube[i][j]->sensor_space.beams[i].range_outer;
+            range_motion_tube->index[k] = params->motion_tube[i][j]->sensor_space.beams[i].index;
+        }
+        range_motion_tube->number_of_elements = params->motion_tube[i][j]->sensor_space.number_of_beams;
+        range_motion_tube->available = true;
+    }else{
+        range_motion_tube->number_of_elements = 0;
+        range_motion_tube->available = true;
+    }
 }
 
 void free_space_activity_running_communicate_control(activity_t *activity)
@@ -345,7 +407,14 @@ void free_space_activity_running_communicate_control(activity_t *activity)
     }
 
     // Send velocity to the robot..
-
+    velocity_t *rt_command_velocity = params->rt_command_velocity;
+    velocity_t *command_velocity = &params->command_velocity;
+    if (coord_state->platform_control_lock != NULL && params->rt_command_velocity!= NULL ){
+        pthread_mutex_lock(coord_state->platform_control_lock);
+        rt_command_velocity->vx = command_velocity->vx;
+        rt_command_velocity->wz = command_velocity->wz;
+        pthread_mutex_unlock(coord_state->platform_control_lock);
+    }
 }
 
 void free_space_activity_running(activity_t *activity)
@@ -397,19 +466,25 @@ void free_space_activity_create_lcsm(activity_t *activity, const char *name_algo
     activity->state.coordination_state = malloc(sizeof(free_space_activity_coordination_state_t));
 
     free_space_activity_params_t *params = (free_space_activity_params_t *) activity->conf.params;
-    motion_tube_t *motion_tube = &params->motion_tube;
-    motion_primitive_t *motion_primitive = &params->motion_primitive;
-    MotionTube.create(motion_tube);
-    MotionPrimitiveUnicycle.create(motion_primitive);
-
+    for(int i=0; i<3; i++){
+        for(int j=0; j<6; j++){
+            for(int k=0; k<17; k++){
+                MotionTube.create(&params->motion_tube[i][j][k]);
+                MotionPrimitiveUnicycle.create(&params->motion_primitive[i][j][k]);
+            }
+        }
+    }
+    params->rt_current_velocity = NULL;
+    params->rt_desired_velocity = NULL;
+    params->rt_command_velocity = NULL;
 
     free_space_activity_coordination_state_t *coord_state = (free_space_activity_coordination_state_t *) activity->state.coordination_state;
     coord_state->range_scan_lock = NULL;
     coord_state->platform_control_lock = NULL;
     coord_state->current_velocity_lock = NULL;
     coord_state->desired_velocity_lock = NULL;
+    coord_state->platform_control_lock = NULL;
     coord_state->motion_tube_lock = NULL;
-
 }
 
 void free_space_activity_resource_configure_lcsm(activity_t *activity)
@@ -454,17 +529,17 @@ void configure_free_space_activity_from_file(const char *file_path,
 
     param_array[number_of_params] = (param_array_t){"motion_tube/max_number_of_samples", &(params->max_number_of_samples), PARAM_TYPE_INT};
     number_of_params++;
-    param_array[number_of_params] = (param_array_t){"motion_tube/sampling_interval/green", &(params->sampling_interval[0]), PARAM_TYPE_DOUBLE};
+    param_array[number_of_params] = (param_array_t){"motion_tube/sampling_interval/green", &(params->sampling_interval[2]), PARAM_TYPE_DOUBLE};
     number_of_params++;
     param_array[number_of_params] = (param_array_t){"motion_tube/sampling_interval/yellow", &(params->sampling_interval[1]), PARAM_TYPE_DOUBLE};
     number_of_params++;
-    param_array[number_of_params] = (param_array_t){"motion_tube/sampling_interval/red", &(params->sampling_interval[2]), PARAM_TYPE_DOUBLE};
+    param_array[number_of_params] = (param_array_t){"motion_tube/sampling_interval/red", &(params->sampling_interval[0]), PARAM_TYPE_DOUBLE};
     number_of_params++;
-    param_array[number_of_params] = (param_array_t){"motion_tube/time_horizon/green", &(params->time_horizon[0]), PARAM_TYPE_DOUBLE};
+    param_array[number_of_params] = (param_array_t){"motion_tube/time_horizon/green", &(params->time_horizon[2]), PARAM_TYPE_DOUBLE};
     number_of_params++;
     param_array[number_of_params] = (param_array_t){"motion_tube/time_horizon/yellow", &(params->time_horizon[1]), PARAM_TYPE_DOUBLE};
     number_of_params++;
-    param_array[number_of_params] = (param_array_t){"motion_tube/time_horizon/red", &(params->time_horizon[2]), PARAM_TYPE_DOUBLE};
+    param_array[number_of_params] = (param_array_t){"motion_tube/time_horizon/red", &(params->time_horizon[0]), PARAM_TYPE_DOUBLE};
     number_of_params++;
 
     param_array[number_of_params] = (param_array_t){"footprint/front/left/x", &(params->footprint[FRONT_LEFT].x), PARAM_TYPE_DOUBLE};
@@ -504,6 +579,21 @@ void configure_free_space_activity_from_file(const char *file_path,
 
 // Debugging prints!
 /*
+
+    printf("solution: vx: %f, wz: %f, horizon: %d\n", 
+        solution.forward_vel,
+        solution.angular_rate,
+        solution.horizon);
+
+    printf("----------------------------\n");
+
+    struct timespec tstart={0,0}, tend={0,0};
+    clock_gettime(CLOCK_MONOTONIC, &tstart);
+
+    clock_gettime(CLOCK_MONOTONIC, &tend);
+    double time = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - 
+           ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+    printf("%d tubes took about %.5f miliseconds\n", 3*3*5, time*1000);
 
     printf("maneuver. T: %f, maneuver.v: %.2f, maneuver.w: %.2f, is_available: %d\n", params->time_horizon[i],
         ((unicycle_control_t *)motion_primitive->control)->forward_velocity, ((unicycle_control_t *)motion_primitive->control)->angular_rate, is_available);

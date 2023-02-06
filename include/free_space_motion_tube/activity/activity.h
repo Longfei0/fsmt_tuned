@@ -31,7 +31,7 @@
 #include <free_space_motion_tube/core/basic.h>
 #include <free_space_motion_tube/core/motion_tube.h>
 
-#define NSEC_TO_SEC 0.000000001
+#define MAX_NUMBER_MOTION_TUBE 102
 
 typedef struct free_space_activity_s{
     void (*create_lcsm)(activity_t*, const char* activity_name);
@@ -47,13 +47,14 @@ typedef struct free_space_activity_params_s{
     range_scan_t *rt_range_scan, range_scan;
     velocity_t *rt_current_velocity, current_velocity;
     velocity_t *rt_desired_velocity, desired_velocity; 
+    velocity_t *rt_command_velocity, command_velocity; 
     
     // platform and sensor params
     kelo_tricycle_t *platform;
     
     // Template
-    motion_tube_t motion_tube;
-    motion_primitive_t motion_primitive;
+    motion_tube_t motion_tube[3][6][17];
+    motion_primitive_t motion_primitive[3][6][17];
     pose2d_t pose_sensor;
 
 
@@ -65,16 +66,6 @@ typedef struct free_space_activity_params_s{
 
     range_motion_tube_t *rt_range_motion_tube;    
     
-
-    // The user will provide an input velocity des_vx, des_wz.
-    // we will compute motion tubes from curr_vx +- dvx and curr_wz +- dwz and t1, t2, t3, t4(5 seg)
-    // t4, des_vx, des_wz is available?  
-    // t3, des_vx, des_wz is available? 
-    // Is there any t4 available? Choose the closest one. (if w is low, choose closest in absolute value)
-    // Is there any t3 available? Choose the closest one.
-    // Is there any t2 available? Choose the closest one.
-    // Is there any t1 available? Choose the closest one, get ready for collision.
-
     // We will choose the one available one that has  the most similar curvature.
 }free_space_activity_params_t;
 
