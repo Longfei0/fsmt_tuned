@@ -1,4 +1,6 @@
 #include<free_space_motion_tube/core/motion_tube_cartesian.h>
+#include<math.h>
+#include <stdio.h>
 
 const struct MotionTubeCartesian MotionTubeCartesian ={
     .create = motion_tube_cartesian_create,
@@ -18,14 +20,13 @@ void motion_tube_cartesian_create(motion_tube_cartesian_t *motion_tube){
 
 void motion_tube_cartesian_allocate_memory(motion_tube_cartesian_t *motion_tube, 
     size_t *max_number_of_samples, uint8_t ALLOCATION_MODE){
-    
     point2d_array_t *side[3] = {&motion_tube->left, &motion_tube->front, &motion_tube->right};
 
     if (ALLOCATION_MODE == 1){
         if (max_number_of_samples[0] > 0){
             for(int i=0; i<3; i++){ 
                 side[i]->number_of_points = 0;
-                side[i]->max_number_of_points = max_number_of_samples[0];    
+                side[i]->max_number_of_points = max_number_of_samples[0]; 
                 side[i]->points = (point2d_t *) malloc(max_number_of_samples[0] * sizeof(point2d_t));  
                 if (side[i]->points != NULL){
                     side[i]->max_number_of_points = max_number_of_samples[0];
@@ -60,7 +61,7 @@ void motion_tube_cartesian_sample(motion_tube_cartesian_t *motion_tube, double s
 
     if (motion_primitive->model == UNICYCLE){
         unicycle_control_t *control = (unicycle_control_t *) motion_primitive->control;
-        if (control->angular_rate == 0){
+        if (fabs(control->angular_rate) < 1e-3){
             if (control->forward_velocity != 0){
                 motion_tube_cartesian_sample_move_straight(motion_tube, sampling_interval,  
                     footprint, motion_primitive, &MotionPrimitiveUnicycle);
@@ -79,13 +80,19 @@ void motion_tube_cartesian_sample_move_straight(motion_tube_cartesian_t *motion_
     double sampling_interval, const point2d_t* footprint, const motion_primitive_t *motion_primitive, 
     const struct MotionPrimitive *MotionPrimitive)
 {
+    unicycle_control_t *control = (unicycle_control_t*) motion_primitive->control;
+    double inflation = 0.025*(control->forward_velocity/0.25-1);
+    if(inflation <0)
+    {
+        inflation = 0;
+    }
     point2d_t p_front_left = {
         .x = footprint[FRONT_LEFT].x,
-        .y = footprint[FRONT_LEFT].y + sampling_interval
+        .y = footprint[FRONT_LEFT].y + inflation
     };
     point2d_t p_front_right = {
         .x = footprint[FRONT_RIGHT].x,
-        .y = footprint[FRONT_RIGHT].y - sampling_interval
+        .y = footprint[FRONT_RIGHT].y - inflation
     };
 
     // Left side
@@ -110,19 +117,25 @@ void motion_tube_cartesian_sample_steer_left(motion_tube_cartesian_t *motion_tub
     double sampling_interval, const point2d_t* footprint, const motion_primitive_t *motion_primitive, 
     const struct MotionPrimitive *MotionPrimitive)
 {
+    unicycle_control_t *control = (unicycle_control_t*) motion_primitive->control;
+    double inflation = 0.025*(control->forward_velocity/0.25-1);
+    if(inflation <0)
+    {
+        inflation = 0;
+    }
     point2d_t p_front_left = {
         .x = footprint[FRONT_LEFT].x,
-        .y = footprint[FRONT_LEFT].y + sampling_interval/2
+        .y = footprint[FRONT_LEFT].y + inflation
     };
     point2d_t p_front_right = {
         .x = footprint[FRONT_RIGHT].x,
-        .y = footprint[FRONT_RIGHT].y - sampling_interval/2
+        .y = footprint[FRONT_RIGHT].y - inflation
     };
     point2d_t p_axle_left = {
         .x = footprint[AXLE_LEFT].x,
-        .y = footprint[AXLE_LEFT].y + sampling_interval/2
-    };
-
+        .y = footprint[AXLE_LEFT].y + inflation
+    };   
+    
     pose2d_t pose_final;
     MotionPrimitive->excite(motion_primitive->control, motion_primitive->time_horizon,
         NULL, &pose_final);
@@ -161,17 +174,23 @@ void motion_tube_cartesian_sample_steer_right(motion_tube_cartesian_t *motion_tu
     double sampling_interval, const point2d_t* footprint, const motion_primitive_t *motion_primitive, 
     const struct MotionPrimitive *MotionPrimitive)
 {
+    unicycle_control_t *control = (unicycle_control_t*) motion_primitive->control;
+    double inflation = 0.025*(control->forward_velocity/0.25-1);
+    if(inflation <0)
+    {
+        inflation = 0;
+    }
     point2d_t p_front_left = {
         .x = footprint[FRONT_LEFT].x,
-        .y = footprint[FRONT_LEFT].y + sampling_interval/2
+        .y = footprint[FRONT_LEFT].y +inflation
     };
     point2d_t p_front_right = {
         .x = footprint[FRONT_RIGHT].x,
-        .y = footprint[FRONT_RIGHT].y - sampling_interval/2
+        .y = footprint[FRONT_RIGHT].y -inflation
     };
     point2d_t p_axle_right = {
         .x = footprint[AXLE_RIGHT].x,
-        .y = footprint[AXLE_RIGHT].y - sampling_interval/2
+        .y = footprint[AXLE_RIGHT].y -inflation
     };
 
     pose2d_t pose;

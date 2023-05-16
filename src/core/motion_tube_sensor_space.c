@@ -13,6 +13,7 @@ void motion_tube_sensor_space_create(motion_tube_sensor_space_t *template){
     template->beams = NULL;
     template->number_of_beams = 0;
     template->max_number_of_beams = 0;
+    template->fully_mapped_points_to_beams = false;
 }
 
 void motion_tube_sensor_space_allocate_memory(motion_tube_sensor_space_t *template,
@@ -20,7 +21,7 @@ void motion_tube_sensor_space_allocate_memory(motion_tube_sensor_space_t *templa
     template->number_of_beams = 0;
 
     if(max_number_of_beams > 0){
-        template->beams = malloc(sizeof(template->beams)*max_number_of_beams);
+        template->beams = (free_space_beam_t*) malloc(sizeof(template->beams)*max_number_of_beams);
         if (template->beams != NULL){
             template->max_number_of_beams = max_number_of_beams;
         }else{
@@ -44,7 +45,6 @@ void motion_tube_sensor_space_monitor_availability(
     range_sensor_t *range_sensor = lidar->range_sensor;
     range_scan_t *range_scan = lidar->range_scan;
     free_space_beam_t *beams = template->beams;
-
     *is_available = true;   // until proven otherwise..
     for(int i=0; i<template->number_of_beams; i++){
         double measurement = range_scan->measurements[template->beams[i].index];
@@ -58,5 +58,4 @@ void motion_tube_sensor_space_monitor_availability(
             }
         }
     }
-
 }

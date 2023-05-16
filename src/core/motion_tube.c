@@ -4,6 +4,8 @@
 
 #include<math.h>
 
+#include <stdio.h>
+
 const struct MotionTube MotionTube ={
     .create = motion_tube_create,
     .allocate_memory = motion_tube_allocate_memory,
@@ -25,7 +27,8 @@ void motion_tube_allocate_memory(motion_tube_t *motion_tube,
     MotionTubeCartesian.allocate_memory(&motion_tube->cartesian, max_number_of_samples, ALLOCATION_MODE);
 
     // Sensor space motion_tube
-    int max_number_of_beams = 0;
+    size_t max_number_of_beams = 0;
+
     point2d_array_t *side[3] = {&motion_tube->cartesian.left, &motion_tube->cartesian.front, &motion_tube->cartesian.right};
     for(int i=0; i<3; i++){
         if (side[i]->points != NULL && side[i]->max_number_of_points > 0){
@@ -33,6 +36,7 @@ void motion_tube_allocate_memory(motion_tube_t *motion_tube,
         }
     }
     MotionTubeSensorSpace.allocate_memory(&motion_tube->sensor_space, max_number_of_beams);
+
 }
 
 void motion_tube_deallocate_memory(motion_tube_t *motion_tube){
@@ -55,7 +59,6 @@ void motion_tube_availability(const motion_tube_t* motion_tube, const lidar_t* l
 }
 
 /** Generic methods **/
-
 void motion_tube_cartesian_to_sensor_space(const motion_tube_cartesian_t* motion_tube_cartesian,
     const range_sensor_t* range_sensor, const pose2d_t* pose_sensor,
     motion_tube_sensor_space_t* motion_tube_sensor_space){
@@ -70,6 +73,7 @@ void motion_tube_cartesian_to_sensor_space(const motion_tube_cartesian_t* motion
     vector2d_t ray;
     point2d_t position_sensor = {.x=pose_sensor->x, .y =pose_sensor->y};
     *number_of_beams = 0; 
+    motion_tube_sensor_space->fully_mapped_points_to_beams = true;
     for (int k=0; k<3; k++){
         for(int i=0; i<samples[k]->number_of_points; i++){
             if(*number_of_beams >= motion_tube_sensor_space->max_number_of_beams){
@@ -87,6 +91,9 @@ void motion_tube_cartesian_to_sensor_space(const motion_tube_cartesian_t* motion
                 beams[*number_of_beams].index = round((ray.direction - 
                         range_sensor->min_angle)/range_sensor->angular_resolution);
                 *number_of_beams += 1;
+            }else
+            {
+                motion_tube_sensor_space->fully_mapped_points_to_beams = false;
             }
         }
     }  

@@ -1,7 +1,3 @@
-motion_tube_t motion_tube;
-The tube has a shape, which is denoted as footprint.
+More information about free-space motion tube in:
 
-motion_primitive_t motion_primitive;
-- kinematic model
-- time horizon
-- control
+Rômulo Rodrigues, Nikolaos Tsiogkas, Nico Huebel, and Herman Bruyninckx. Clutter-resilient autonomous mobile robot navigation with computationally efficient free-space features. International Symposium on Robotics Research, Geneva, Switzerland, 2022. [[pdf]](https://kuleuven-my.sharepoint.com/:b:/g/personal/romulo_rodrigues_kuleuven_be/EVbJ249ONkFOuoQaoeBEWu8BXwJJcPJ0U4wfqi2cl7TgNQ?e=wwiA2z)

@@ -11,23 +11,23 @@ set(data_structure_FOUND false)
 set(read_parameter_struct_FOUND false)
 
 include(FetchContent)
-FetchContent_Declare(five_c
+FetchContent_Declare(five-c
     GIT_REPOSITORY git@gitlab.kuleuven.be:u0144428/algorithm_and_activity_component_architecture.git
     GIT_TAG master
     TIMEOUT 5
 )
-FetchContent_Declare(read_parameter_struct
+FetchContent_Declare(read-parameter-struct
     GIT_REPOSITORY git@gitlab.kuleuven.be:u0141557/read_parameter_struct.git
     GIT_TAG main
     TIMEOUT 5
 )
-FetchContent_Declare(data_structure
+FetchContent_Declare(data-structure
     GIT_REPOSITORY git@gitlab.kuleuven.be:u0144428/data-structure-aacal.git
     GIT_TAG master
     TIMEOUT 5
 )
 
-FetchContent_MakeAvailable(read_parameter_struct five_c )
+FetchContent_MakeAvailable(read-parameter-struct five-c )
 
 if(NOT ${five_c_FOUND})
     set(FIVE_C_INCLUDE_DIRS ${five_c_SOURCE_DIR}/include)

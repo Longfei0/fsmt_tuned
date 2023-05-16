@@ -26,6 +26,7 @@
 #include <mechanics_data_structure/velocity.h>
 #include <platform_data_structure/kelo_tricycle.h>
 #include <navigation_data_structure/range_motion_tube.h>
+#include <navigation_data_structure/odometry2d.h>
 
 // Free space
 #include <free_space_motion_tube/core/basic.h>
@@ -45,7 +46,7 @@ typedef struct free_space_activity_params_s{
     char configuration_file[100]; 
     range_sensor_t *rt_range_sensor, range_sensor;
     range_scan_t *rt_range_scan, range_scan;
-    velocity_t *rt_current_velocity, current_velocity;
+    odometry2d_t *rt_odometry, odometry;
     velocity_t *rt_desired_velocity, desired_velocity; 
     velocity_t *rt_command_velocity, command_velocity; 
     
@@ -53,8 +54,8 @@ typedef struct free_space_activity_params_s{
     kelo_tricycle_t *platform;
     
     // Template
-    motion_tube_t motion_tube[3][6][17];
-    motion_primitive_t motion_primitive[3][6][17];
+    motion_tube_t motion_tube[3][6][21];
+    motion_primitive_t motion_primitive[3][6][21];
     pose2d_t pose_sensor;
 
 
@@ -88,7 +89,7 @@ typedef struct free_space_coordination_state_s {
     bool *platform_control_ready, *platform_control_dead;
     bool *lidar_ready, *lidar_dead; 
     // Mutex
-    pthread_mutex_t *range_scan_lock, *platform_control_lock, *current_velocity_lock;
+    pthread_mutex_t *range_scan_lock, *platform_control_lock, *odometry_lock;
     pthread_mutex_t *desired_velocity_lock, *motion_tube_lock;
 } free_space_activity_coordination_state_t;
 

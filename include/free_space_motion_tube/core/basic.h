@@ -1,12 +1,14 @@
 #ifndef FREE_SPACE_MOTION_TUBE_CORE_BASIC_H
 #define FREE_SPACE_MOTION_TUBE_CORE_BASIC_H
 
+#include <stdbool.h>
+
 #include <geometry_data_structure/pose2d.h>
 #include <geometry_data_structure/point2d.h>
 #include <geometry_data_structure/vector2d.h>
 #include <geometry_data_structure/line_segment2d.h>
 #include <geometry_data_structure/polyline.h>
-#include<kinematics_data_structure/models.h>
+#include <kinematics_data_structure/models.h>
 #include <mechanics_data_structure/body.h>
 #include <motion_primitive_data_structure/maneuver.h>
 #include <sensor_data_structure/range_sensor.h>
@@ -46,6 +48,7 @@ typedef struct motion_tube_sensor_space_s{
     free_space_beam_t *beams;
     int number_of_beams;
     int max_number_of_beams;   
+    bool fully_mapped_points_to_beams;
 }motion_tube_sensor_space_t;
 
 typedef struct motion_tube_s{

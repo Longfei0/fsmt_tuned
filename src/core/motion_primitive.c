@@ -36,6 +36,7 @@ void motion_primitive_unicycle_deallocate_memory(motion_primitive_t* motion_prim
 void motion_primitive_unicycle_sample(const motion_primitive_t *motion_primitive, 
     const point2d_t *offset, double sampling_interval, point2d_array_t *samples)
 {
+
     // Variables defined to keep notation compact
     unicycle_control_t *control = (unicycle_control_t *) motion_primitive->control;
     
@@ -43,7 +44,7 @@ void motion_primitive_unicycle_sample(const motion_primitive_t *motion_primitive
     double sampling_time;
     int number_of_samples;
 
-    if (control->angular_rate == 0){    
+    if (fabs(control->angular_rate) < 1e-3){    
         if (control->forward_velocity == 0){
             number_of_samples = 0;
             return;
@@ -56,6 +57,7 @@ void motion_primitive_unicycle_sample(const motion_primitive_t *motion_primitive
             pow(radius_at_origin - offset->y,2) );
         sampling_time = (sampling_interval/(fabs(control->angular_rate)*radius_at_point));
     }
+
     // Refine sampling time such that samples at t=0 and t=time_horizon are included
     if (motion_primitive->time_horizon > 0){    // Only predict trajectory in the  future
         number_of_samples = (int) ceil(motion_primitive->time_horizon/sampling_time) + 1; 
@@ -63,7 +65,6 @@ void motion_primitive_unicycle_sample(const motion_primitive_t *motion_primitive
     }else{
         number_of_samples = 0;
     }
-
     pose2d_t pose;
     for(int i=0; i<number_of_samples; i++){
         if (samples->number_of_points >= samples->max_number_of_points){   
@@ -96,7 +97,7 @@ void motion_primitive_unicycle_excite(const void *control,
     double sinz = sin(pose_final->yaw);     
     double cosz = cos(pose_final->yaw);
 
-    if (unicycle_control->angular_rate == 0){
+    if (fabs(unicycle_control->angular_rate) <= 1e-3){
         pose_final->x = x0*cosz - y0*sinz + unicycle_control->forward_velocity*time;
         pose_final->y = x0*sinz + y0*cosz + unicycle_control->forward_velocity*time*sinz;
     }else{
