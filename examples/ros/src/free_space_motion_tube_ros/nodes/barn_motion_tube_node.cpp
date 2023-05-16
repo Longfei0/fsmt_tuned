@@ -25,8 +25,13 @@ double wrap_to_pi(double angle);
 void PrintPoint2dArray(point2d_array_t *points);
 double compute_points_distance(point2d_t *p1, point2d_t *p2);
 int print = true;
-
+double last_forward_vel = 0;
+double acceleration = .25;
+double dt = 1.0/50;
 double last_w_vel=0.0;
+double max_forward_vel = .8;
+double max_angular_rate = M_PI/3;
+
 bool new_plan_request = true;
 class BarnMotionTubeNode
 {
@@ -212,12 +217,12 @@ void BarnMotionTubeNode::ScanCallback(const sensor_msgs::LaserScan::ConstPtr& ms
                 barn_motion_tube_.motion_primitive_[best_i_index][best_j_index].control; 
             best_forward_vel_.push_back(local_control->forward_velocity);
             best_angular_vel_.push_back(local_control->angular_rate);
-            best_cost_.push_back( (*best_cost_ith_horizon)*(1.0/(pow(2,i))));  
+            best_cost_.push_back( std::min(0.5-*best_cost_ith_horizon,0.1) );    
             total_cost += best_cost_[i];
             number_of_voters++;
-            std::cout << "i: " << i << " j: " << index << " v: " << local_control->forward_velocity <<
-                " w: " << local_control->angular_rate*180/M_PI << " r: " << local_control->forward_velocity/local_control->angular_rate <<
-                " cost: " << *best_cost_ith_horizon << " retified cost: " << best_cost_[i] <<std::endl;
+            // std::cout << "i: " << i << " j: " << index << " v: " << local_control->forward_velocity <<
+            //     " w: " << local_control->angular_rate*180/M_PI << " r: " << local_control->forward_velocity/local_control->angular_rate <<
+            //     " cost: " << *best_cost_ith_horizon << " retified cost: " << best_cost_[i] <<std::endl;
         }
     }
 
@@ -226,34 +231,48 @@ void BarnMotionTubeNode::ScanCallback(const sensor_msgs::LaserScan::ConstPtr& ms
         double total_weight = 0;
         double v_weight_sum = 0;
         double w_weight_sum = 0;
-        std::cout << "[weight] "; 
+        // std::cout << "[weight] "; 
         for(int i=0; i<number_of_voters; i++)
         {
             double weight = total_cost/best_cost_[i];
             total_weight += weight;
             v_weight_sum += best_forward_vel_[i]*weight;
             w_weight_sum += best_angular_vel_[i]*weight;
-            std::cout << i << ": " << weight << ", ";
+            // std::cout << i << ": " << weight << ", ";
         }
-        std::cout << "total: " << total_weight << std::endl;
-        twist_message.linear.x = v_weight_sum/total_weight ;;
-        twist_message.angular.z = w_weight_sum/total_weight; 
+        // std::cout << "total: " << total_weight << std::endl;
+        double v = v_weight_sum/total_weight ;
+        double w = w_weight_sum/total_weight;
+        if (v > 0.3){
+            double v_desired = std::min( last_forward_vel + acceleration*dt,max_forward_vel );
+            if(fabs(w) < 1e-3)
+            {
+                twist_message.linear.x = v_desired;
+                twist_message.angular.z = w;
+            }else
+            {
+                double r = v/w;    
+                double w_clipped = std::max(std::min(v_desired/r, max_angular_rate), -max_angular_rate);
+                twist_message.linear.x = r*w_clipped;
+                twist_message.angular.z = w_clipped; 
+            }
+
+        }else{
+            twist_message.linear.x = v_weight_sum/total_weight;
+            twist_message.angular.z = w_weight_sum/total_weight; 
+        }
+        last_forward_vel=twist_message.linear.x ;
+        last_w_vel = twist_message.angular.z;
     }else 
     {
-        twist_message.linear.x = 0.00;
-        twist_message.angular.z = std::max(std::min(5*last_w_vel, 0.5), -0.5);
+        twist_message.linear.x = 0.0;
+        twist_message.angular.z = std::max(std::min(3*last_w_vel, 0.5), -0.5);
+        last_forward_vel=0;
     }
    
-    if(number_of_voters < 5){
-        new_plan_request = true;
-    }else{
-        new_plan_request = true;
-    }
-
-    last_w_vel = twist_message.angular.z;
-    std::cout << "message! Best cost: " ;
-    std::cout << best_cost << " v: " << twist_message.linear.x << " w: " << twist_message.angular.z << 
-        " r: " << twist_message.linear.x/twist_message.angular.z << std::endl;
+    // std::cout << "message! Best cost: " ;
+    // std::cout << best_cost << " v: " << twist_message.linear.x << " w: " << twist_message.angular.z << 
+    //     " r: " << twist_message.linear.x/twist_message.angular.z << std::endl;
     cmd_vel_pub_.publish(twist_message);
     // std::cout << "-----------------------------------------------"<< std::endl;
     // clock_gettime(CLOCK_MONOTONIC,  &toc);
@@ -263,28 +282,6 @@ void BarnMotionTubeNode::ScanCallback(const sensor_msgs::LaserScan::ConstPtr& ms
     // // barn_motion_tube_.PrintAvailability();
     if(print==false){
         return;
-    }
-    // printing
-    std::cout << range_sensor.nb_measurements << " " << range_sensor.angular_resolution << 
-        " " << range_sensor.min_angle<< " " << range_sensor.max_angle << " " << 
-        range_sensor.min_distance << " " << range_sensor.max_distance << " ";
-    for (int i=0; i< range_sensor.nb_measurements; i++)
-    {
-        std::cout << range_scan.measurements[i] << " ";
-    }
-    std::cout << std::endl;
-    PrintPoint2dArray(&waypoints_);
-    for(size_t i=0; i<barn_motion_tube_.motion_tube_.size(); i++)
-    {
-        for(size_t j=0; j<barn_motion_tube_.motion_tube_[i].size(); j++)
-        {
-            print_cartesian_points(&barn_motion_tube_.motion_tube_[i][j].cartesian);
-            print_beams(&barn_motion_tube_.motion_tube_[i][j].sensor_space);
-            std::cout << barn_motion_tube_.availability_[i][j] << std::endl;
-            std::cout << vec_goal[i].x << " " << vec_goal[i].y << std::endl;
-            std::cout << barn_motion_tube_.final_position_[i][j].x << " " <<
-                barn_motion_tube_.final_position_[i][j].y << std::endl; 
-        }
     }
     print=false;
 }
