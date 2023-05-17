@@ -29,7 +29,7 @@ double last_forward_vel = 0;
 double acceleration = .25;
 double dt = 1.0/50;
 double last_w_vel=0.0;
-double max_forward_vel = .8;
+double max_forward_vel = 1.0;
 double max_angular_rate = M_PI/3;
 
 bool new_plan_request = true;
