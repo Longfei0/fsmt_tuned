@@ -265,8 +265,13 @@ void BarnMotionTubeNode::ScanCallback(const sensor_msgs::LaserScan::ConstPtr& ms
         last_w_vel = twist_message.angular.z;
     }else 
     {
-        twist_message.linear.x = 0.0;
-        twist_message.angular.z = std::max(std::min(3*last_w_vel, 0.5), -0.5);
+        if (fabs(last_w_vel) > 1e-2 ){
+            twist_message.angular.z = .3*last_w_vel/fabs(last_w_vel);
+            twist_message.linear.x = 0.0;
+        }else{
+            twist_message.angular.z = .0*last_w_vel/fabs(last_w_vel);
+            twist_message.linear.x = -0.1;
+        }
         last_forward_vel=0;
     }
    
