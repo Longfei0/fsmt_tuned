@@ -8,33 +8,33 @@ BarnMotionTube::BarnMotionTube()
 {
     // number of curvatures (n), initial curvature (r0), minimum curvature (rmin)
     params_.r0 = 20;
-    params_.rmin = 0.15;
+    params_.rmin = 0.065;
     params_.number_of_curvatures = 40; 
     // Maximum angular rotation (wmax)
     params_.max_angular_rate = M_PI/2;
     // vector of (velocity, time horizon)
     // 0.1
-    params_.vec_mp_params.push_back({.forward_velocity=0.05,.time_horizon=2});
+    // params_.vec_mp_params.push_back({.forward_velocity=0.05,.time_horizon=2});
     params_.vec_mp_params.push_back({.forward_velocity=0.1,.time_horizon=0.1/0.1});
     params_.vec_mp_params.push_back({.forward_velocity=0.25,.time_horizon=.1/.25});
     // .25 m
-    params_.vec_mp_params.push_back({.forward_velocity=0.25,.time_horizon=2});
+    // params_.vec_mp_params.push_back({.forward_velocity=0.25,.time_horizon=2});
     params_.vec_mp_params.push_back({.forward_velocity=0.25,.time_horizon=0.25/0.25});
     params_.vec_mp_params.push_back({.forward_velocity=0.5,.time_horizon=.25/.5});
     // .5 m
-    params_.vec_mp_params.push_back({.forward_velocity=0.5,.time_horizon=2});
+    // params_.vec_mp_params.push_back({.forward_velocity=0.5,.time_horizon=2});
     params_.vec_mp_params.push_back({.forward_velocity=0.5,.time_horizon=.5/.5});
     params_.vec_mp_params.push_back({.forward_velocity=0.75,.time_horizon=.75/.5});
     // .75
-    params_.vec_mp_params.push_back({.forward_velocity=.75,.time_horizon=2});
+    // params_.vec_mp_params.push_back({.forward_velocity=.75,.time_horizon=2});
     params_.vec_mp_params.push_back({.forward_velocity=.75,.time_horizon=.75/.75});
     params_.vec_mp_params.push_back({.forward_velocity=1.0,.time_horizon=.75/1.0});
     // 1. m
-    params_.vec_mp_params.push_back({.forward_velocity=1.0,.time_horizon=2});
+    // params_.vec_mp_params.push_back({.forward_velocity=1.0,.time_horizon=2});
     params_.vec_mp_params.push_back({.forward_velocity=1.0,.time_horizon=1./1.0});
     params_.vec_mp_params.push_back({.forward_velocity=1.25,.time_horizon=1./1.25});
     // 1.25 m
-    params_.vec_mp_params.push_back({.forward_velocity=1.25,.time_horizon=2});
+    // params_.vec_mp_params.push_back({.forward_velocity=1.25,.time_horizon=2});
     params_.vec_mp_params.push_back({.forward_velocity=1.25,.time_horizon=1.25/1.25});
     params_.vec_mp_params.push_back({.forward_velocity=1.5,.time_horizon=1.25/1.5});
     // 1.5 m
