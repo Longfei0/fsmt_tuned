@@ -26,11 +26,11 @@ void PrintPoint2dArray(point2d_array_t *points);
 double compute_points_distance(point2d_t *p1, point2d_t *p2);
 int print = true;
 double last_forward_vel = 0;
-double acceleration = .5;
+double acceleration = .3;
 double dt = 1.0/50;
 double last_w_vel=0.0;
-double max_forward_vel = .9;
-double max_angular_rate = M_PI/3;
+double max_forward_vel = .8;
+double max_angular_rate = M_PI/2;
 
 bool new_plan_request = true;
 class BarnMotionTubeNode
@@ -217,15 +217,16 @@ void BarnMotionTubeNode::ScanCallback(const sensor_msgs::LaserScan::ConstPtr& ms
                 barn_motion_tube_.motion_primitive_[best_i_index][best_j_index].control; 
             best_forward_vel_.push_back(local_control->forward_velocity);
             best_angular_vel_.push_back(local_control->angular_rate);
-            best_cost_.push_back( std::min(0.5-*best_cost_ith_horizon,0.1) );    
+            best_cost_.push_back( std::max(0.5-*best_cost_ith_horizon,0.01) );    
             total_cost += best_cost_[number_of_voters];
-            number_of_voters++;
             // std::cout << "i: " << i << " j: " << index << " v: " << local_control->forward_velocity <<
             //     " w: " << local_control->angular_rate*180/M_PI << " r: " << local_control->forward_velocity/local_control->angular_rate <<
-            //     " cost: " << *best_cost_ith_horizon << " retified cost: " << best_cost_[i] <<std::endl;
+            //     " cost: " << *best_cost_ith_horizon << " retified cost: " << best_cost_[number_of_voters] <<std::endl;
+            number_of_voters++;
+
         }
     }
-
+    // std::cout <<"----------" << std::endl;
     geometry_msgs::Twist twist_message;
     if(number_of_voters > 0)  {
         double total_weight = 0;
@@ -243,15 +244,17 @@ void BarnMotionTubeNode::ScanCallback(const sensor_msgs::LaserScan::ConstPtr& ms
         // std::cout << "total: " << total_weight << std::endl;
         double v = v_weight_sum/total_weight ;
         double w = w_weight_sum/total_weight;
+        // std::cout << "chosen v: " << v << "chosen w: " << w << std::endl;
+        // std::cout <<"---------------" << std::endl;
         double v_desired;;
-        if (v>0.4){
+        if (v>0.3){
             v_desired = max_forward_vel;
         }else if (v>0.2){
             v_desired = 0.2;
         }else{
             v_desired = 0.05;
         }
-
+        
         if(v_desired > last_forward_vel){
             v_desired = std::min( last_forward_vel + acceleration*dt, v_desired );
         }
@@ -270,8 +273,8 @@ void BarnMotionTubeNode::ScanCallback(const sensor_msgs::LaserScan::ConstPtr& ms
         last_w_vel = twist_message.angular.z;
     }else 
     {
-        if (fabs(last_w_vel) > 1e-2 ){
-            twist_message.linear.x = 0.0;
+        if (fabs(last_w_vel) > 1e-1 ){
+            twist_message.linear.x = -.0;
             twist_message.angular.z = .75*last_w_vel/fabs(last_w_vel);
         }else{
             twist_message.linear.x = -0.3;
@@ -394,6 +397,30 @@ int main(int argc, char **argv)
     BarnMotionTubeNode nav_node;
     
     ros::spin();
+
+
+    // BarnMotionTube barn_motion_tube;
+    // range_sensor_t range_sensor; 
+    // range_sensor.angular_resolution = 0.0065540750511;
+    // range_sensor.nb_measurements = 0;
+    // range_sensor.max_angle = 2.3561899662;
+    // range_sensor.min_angle = -2.3561899662;
+    // range_sensor.max_distance = 30.0;
+    // range_sensor.min_distance = 0.10;
+
+    // barn_motion_tube.Configure(&range_sensor);
+
+    // for(size_t i=0; i<barn_motion_tube.motion_tube_.size(); i++)
+    // {
+    //     for(size_t j=0; j<barn_motion_tube.motion_tube_[i].size(); j++)
+    //     {
+    //         print_cartesian_points(&barn_motion_tube.motion_tube_[i][j].cartesian);
+    //         print_beams(&barn_motion_tube.motion_tube_[i][j].sensor_space);
+    //     }
+
+    // }
+
+
 
     return 0;
 }
