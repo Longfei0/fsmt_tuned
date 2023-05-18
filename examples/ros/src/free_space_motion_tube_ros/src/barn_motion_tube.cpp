@@ -8,13 +8,12 @@ BarnMotionTube::BarnMotionTube()
 {
     // number of curvatures (n), initial curvature (r0), minimum curvature (rmin)
     params_.r0 = 20;
-    params_.rmin = 0.065;
-    params_.number_of_curvatures = 40; 
+    params_.rmin = 0.03;
+    params_.number_of_curvatures = 50; 
     // Maximum angular rotation (wmax)
     params_.max_angular_rate = M_PI/2;
     // vector of (velocity, time horizon)
     // 0.1
-    // params_.vec_mp_params.push_back({.forward_velocity=0.05,.time_horizon=2});
     params_.vec_mp_params.push_back({.forward_velocity=0.1,.time_horizon=0.1/0.1});
     params_.vec_mp_params.push_back({.forward_velocity=0.25,.time_horizon=.1/.25});
     // .25 m
@@ -47,7 +46,7 @@ BarnMotionTube::BarnMotionTube()
     // Sampling parameters
     params_.sampling_interval = 0.03;
     // Footprint
-    double x_inflation = 0.15;
+    double x_inflation = 0.10;
     double y_inflation = 0.05;
     params_.footprint[FRONT_LEFT].x = 0.21 + x_inflation;
     params_.footprint[FRONT_LEFT].y = 0.165 + y_inflation;
