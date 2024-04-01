@@ -29,7 +29,7 @@ double last_forward_vel = 0;
 double acceleration = .3;
 double dt = 1.0/50;
 double last_w_vel=0.0;
-double max_forward_vel = .8;
+double max_forward_vel = 2;
 double max_angular_rate = M_PI/2;
 
 bool new_plan_request = true;
@@ -247,8 +247,10 @@ void BarnMotionTubeNode::ScanCallback(const sensor_msgs::LaserScan::ConstPtr& ms
         // std::cout << "chosen v: " << v << "chosen w: " << w << std::endl;
         // std::cout <<"---------------" << std::endl;
         double v_desired;;
-        if (v>0.3){
+        if (v>0.8){
             v_desired = max_forward_vel;
+        }else if (v>0.3){
+            v_desired = 0.8;
         }else if (v>0.2){
             v_desired = 0.2;
         }else{
@@ -282,6 +284,8 @@ void BarnMotionTubeNode::ScanCallback(const sensor_msgs::LaserScan::ConstPtr& ms
         }
         last_forward_vel=twist_message.linear.x;
     }
+
+    std::cout << "chosen v: " << last_forward_vel << "chosen w: " << last_w_vel << std::endl;
    
     // std::cout << "message! Best cost: " ;
     // std::cout << best_cost << " v: " << twist_message.linear.x << " w: " << twist_message.angular.z << 
